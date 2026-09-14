@@ -23,6 +23,13 @@ import {
   Star,
   GitBranch,
   Code2,
+  Copy,
+  CheckCheck,
+  Bot,
+  Cpu,
+  Zap,
+  Sliders,
+  ChevronRight,
 } from 'lucide-react';
 import { ProductShell, TopBar } from '@/components/career-shell';
 import { mockStudent } from '@/lib/mock/career-data';
@@ -33,6 +40,11 @@ import {
   cleanGithubUsername,
   type EnrichedSignalData,
 } from '@/lib/services/profile-enricher';
+import {
+  evaluateRepoHeuristics,
+  evaluateRepositoryWithAI,
+  type RepoEvaluationResult,
+} from '@/lib/services/ai-repo-evaluator';
 
 export default function ProfilePage() {
   const { profile, user, updateProfile, uploadResume, isConfigured } = useAuth();
@@ -44,6 +56,16 @@ export default function ProfilePage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [enrichedData, setEnrichedData] = useState<EnrichedSignalData | null>(null);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+
+  // AI Audit State
+  const [selectedAuditRepo, setSelectedAuditRepo] = useState<any | null>(null);
+  const [auditResult, setAuditResult] = useState<RepoEvaluationResult | null>(null);
+  const [isEvaluatingWithAI, setIsEvaluatingWithAI] = useState(false);
+  const [copiedPitch, setCopiedPitch] = useState(false);
+  const [geminiKeyInput, setGeminiKeyInput] = useState(
+    localStorage.getItem('iterateup_gemini_api_key') || ''
+  );
+  const [showKeyConfig, setShowKeyConfig] = useState(false);
 
   // Fallbacks from profile -> user metadata -> mock
   const fullName =
@@ -186,6 +208,37 @@ export default function ProfilePage() {
 
   const handleManualSync = () => {
     fetchLiveSignals();
+  };
+
+  const openRepoAuditModal = async (repo: any) => {
+    setSelectedAuditRepo(repo);
+    const initial = evaluateRepoHeuristics(repo);
+    setAuditResult(initial);
+    setIsEvaluatingWithAI(true);
+    try {
+      const res = await evaluateRepositoryWithAI(repo, geminiKeyInput.trim());
+      setAuditResult(res);
+    } catch (e) {
+      console.warn('AI evaluation error:', e);
+    } finally {
+      setIsEvaluatingWithAI(false);
+    }
+  };
+
+  const handleCopyPitch = () => {
+    if (auditResult?.recruiterPitch) {
+      navigator.clipboard.writeText(auditResult.recruiterPitch);
+      setCopiedPitch(true);
+      setTimeout(() => setCopiedPitch(false), 2500);
+    }
+  };
+
+  const handleSaveGeminiKey = (newKey: string) => {
+    setGeminiKeyInput(newKey);
+    localStorage.setItem('iterateup_gemini_api_key', newKey.trim());
+    if (selectedAuditRepo) {
+      openRepoAuditModal(selectedAuditRepo);
+    }
   };
 
   const handleResumeUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -642,42 +695,67 @@ export default function ProfilePage() {
                     stars: 0,
                   },
                 ]
-            ).map((repo: any) => (
-              <div
-                key={repo.id || repo.name}
-                className="group relative flex flex-col justify-between rounded-xl border border-border bg-background p-4 transition-all hover:border-primary/60 hover:shadow-md"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <a
-                      href={repo.htmlUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-display text-sm font-bold text-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5"
-                    >
-                      <Github size={14} className="text-primary" />
-                      <span>{repo.name}</span>
-                      <ExternalLink size={11} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </a>
-                    <span className="rounded-md bg-secondary px-2 py-0.5 font-mono-ui text-[10px] font-semibold text-secondary-foreground">
-                      {repo.language || 'Code'}
-                    </span>
+            ).map((repo: any) => {
+              const evalRes = evaluateRepoHeuristics(repo);
+              return (
+                <div
+                  key={repo.id || repo.name}
+                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-background p-4 transition-all hover:border-primary/60 hover:shadow-md"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <a
+                        href={repo.htmlUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-display text-sm font-bold text-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5"
+                      >
+                        <Github size={14} className="text-primary" />
+                        <span>{repo.name}</span>
+                        <ExternalLink size={11} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </a>
+                      <span className="rounded-md bg-secondary px-2 py-0.5 font-mono-ui text-[10px] font-semibold text-secondary-foreground">
+                        {repo.language || 'Code'}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-2">
+                      {repo.description || 'Public repository linked to student profile.'}
+                    </p>
                   </div>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-2">
-                    {repo.description || 'Public repository linked to student profile.'}
-                  </p>
-                </div>
 
-                <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
-                  <span className="inline-flex items-center gap-1 font-mono-ui text-[10px]">
-                    <Star size={11} className="text-amber-500 fill-amber-500" /> {repo.stars || 0}
-                  </span>
-                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-mono-ui text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
-                    Verified Repo
-                  </span>
+                  <div className="mt-4 border-t border-border/60 pt-3">
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => openRepoAuditModal(repo)}
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 font-mono-ui text-[10px] font-bold transition-all hover:scale-105 ${evalRes.tierColor}`}
+                      >
+                        <Zap size={10} />
+                        <span>AI {evalRes.overallScore}/100</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => openRepoAuditModal(repo)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-accent transition-colors"
+                      >
+                        <Sparkles size={11} />
+                        <span>AI Review</span>
+                      </button>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 font-mono-ui text-[10px]">
+                        <Star size={11} className="text-amber-500 fill-amber-500" /> {repo.stars || 0}
+                      </span>
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-mono-ui text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                        {evalRes.tier}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -951,6 +1029,256 @@ export default function ProfilePage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* AI CODE REVIEW & REPO AUDIT MODAL */}
+      {selectedAuditRepo && auditResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[92vh] w-full max-w-[740px] overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-border pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono-ui text-[10px] font-bold uppercase tracking-wider text-primary">
+                    AI Code Quality &amp; SDE-1 Readiness Audit
+                  </span>
+                  <span className="rounded-md bg-secondary px-2 py-0.5 font-mono-ui text-[10px] font-semibold text-secondary-foreground">
+                    {auditResult.analyzedWith}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
+                    {selectedAuditRepo.name}
+                  </h2>
+                  <a
+                    href={selectedAuditRepo.htmlUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <ExternalLink size={16} />
+                  </a>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAuditRepo(null);
+                  setAuditResult(null);
+                }}
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Score & Tier Banner */}
+            <div className="mt-5 grid gap-4 rounded-2xl border border-border bg-background p-5 sm:grid-cols-[140px_1fr] items-center">
+              <div className="flex flex-col items-center justify-center border-b border-border pb-4 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4">
+                <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  Overall Score
+                </p>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="font-display text-4xl font-bold text-foreground">
+                    {auditResult.overallScore}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-mono-ui">/100</span>
+                </div>
+                <span
+                  className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono-ui text-[10px] font-bold ${auditResult.tierColor}`}
+                >
+                  <Zap size={10} />
+                  {auditResult.tier}
+                </span>
+              </div>
+
+              {/* 3 Metric Breakdown Bars */}
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span className="text-foreground">Architecture &amp; Modularity</span>
+                    <span className="font-mono-ui text-primary">{auditResult.architectureScore} / 10</span>
+                  </div>
+                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-500"
+                      style={{ width: `${(auditResult.architectureScore / 10) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span className="text-foreground">Production Readiness &amp; DevOps</span>
+                    <span className="font-mono-ui text-emerald-600 dark:text-emerald-400">
+                      {auditResult.productionScore} / 10
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                      style={{ width: `${(auditResult.productionScore / 10) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span className="text-foreground">Engineering Craft &amp; Documentation</span>
+                    <span className="font-mono-ui text-foreground">{auditResult.craftScore} / 10</span>
+                  </div>
+                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full bg-foreground transition-all duration-500"
+                      style={{ width: `${(auditResult.craftScore / 10) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recruiter Resume Pitch */}
+            <div className="mt-5 rounded-2xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <FileText size={14} className="text-primary" /> Recruiter Pitch (Resume Bullet Point):
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyPitch}
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-primary transition-colors"
+                >
+                  {copiedPitch ? (
+                    <>
+                      <CheckCheck size={12} className="text-emerald-500" />
+                      <span className="text-emerald-500 font-bold">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={12} />
+                      <span>Copy for CV</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground font-mono-ui bg-background rounded-xl p-3 border border-border/50">
+                "{auditResult.recruiterPitch}"
+              </p>
+            </div>
+
+            {/* Key Strengths */}
+            <div className="mt-4">
+              <h4 className="text-xs font-bold text-foreground">Verified Strengths in Code:</h4>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {auditResult.keyStrengths.map((s, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-300 font-medium"
+                  >
+                    <Check size={12} className="text-emerald-500 shrink-0" />
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Actionable Improvement Roadmap */}
+            <div className="mt-5 rounded-2xl border border-border bg-background p-4">
+              <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Sliders size={14} className="text-primary" /> Actionable Checklist to Reach 98/100:
+              </h4>
+              <ul className="mt-2.5 space-y-2 text-xs text-muted-foreground">
+                {auditResult.improvementActions.map((action, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-primary/10 font-mono-ui text-[9px] font-bold text-primary mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span>{action}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* STAR Interview Prep Questions */}
+            <div className="mt-5 rounded-2xl border border-border bg-card p-4">
+              <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Bot size={14} className="text-primary" /> Likely Technical Interview Questions (STAR Method):
+              </h4>
+              <div className="mt-2.5 space-y-2 text-xs">
+                {auditResult.interviewQuestions.map((q, idx) => (
+                  <div key={idx} className="rounded-xl border border-border/60 bg-background p-3">
+                    <p className="font-semibold text-foreground flex items-start gap-1.5">
+                      <span className="font-mono-ui text-primary text-[10px]">Q{idx + 1}:</span>
+                      {q}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Free Gemini API Key configuration */}
+            <div className="mt-5 border-t border-border pt-4">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowKeyConfig(!showKeyConfig)}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                >
+                  <Cpu size={13} className="text-primary" />
+                  <span>Configure Free Google Gemini 2.0 API Key</span>
+                  <ChevronRight size={13} className={showKeyConfig ? 'rotate-90 transition-transform' : ''} />
+                </button>
+                <span className="text-[10px] text-muted-foreground font-mono-ui">100% Free Tier</span>
+              </div>
+
+              {showKeyConfig && (
+                <div className="mt-3 rounded-xl border border-border bg-background p-3 text-xs">
+                  <p className="text-muted-foreground leading-relaxed">
+                    Get a free API key with zero billing from{' '}
+                    <a
+                      href="https://aistudio.google.com/app/apikey"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      Google AI Studio
+                    </a>{' '}
+                    (1,500 free requests/day) to run live generative code scans on your repos.
+                  </p>
+                  <div className="mt-2.5 flex gap-2">
+                    <input
+                      type="password"
+                      value={geminiKeyInput}
+                      onChange={(e) => setGeminiKeyInput(e.target.value)}
+                      placeholder="Paste AI Studio API key (AIzaSy...)"
+                      className="h-9 flex-1 rounded-xl border border-input bg-card px-3 text-xs outline-none focus:border-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSaveGeminiKey(geminiKeyInput)}
+                      className="rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:opacity-90"
+                    >
+                      Save &amp; Re-evaluate
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAuditRepo(null);
+                  setAuditResult(null);
+                }}
+                className="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}
