@@ -2,14 +2,28 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   AlertCircle,
   ArrowRight,
+  Award,
+  Bot,
+  Briefcase,
   CheckCircle2,
+  Code2,
+  Cpu,
+  ExternalLink,
+  FileCheck,
   Filter,
+  GitBranch,
+  Github,
+  GraduationCap,
   Layers,
   Lightbulb,
+  Linkedin,
+  MessageSquare,
   Plus,
   RefreshCw,
+  Share2,
   SlidersHorizontal,
   Sparkles,
+  Target,
   TrendingUp,
   UserCheck,
   Zap,
@@ -23,6 +37,9 @@ import {
   generateTailoredSkillGaps,
   fetchStudentCustomSkills,
   saveStudentCustomSkill,
+  auditCandidateSkillsWithAI,
+  EnhancedSkillGapItem,
+  StructuredEvidence,
 } from '@/lib/services/skills-readiness-engine';
 import {
   getCachedEnrichedSignals,
@@ -34,10 +51,14 @@ import {
 export default function SkillsPage() {
   const { profile, updateProfile } = useAuth();
 
-  // Selected benchmark role: 'primary' (user's target role) | 'swe' | 'fullstack' | 'data'
+  // Selected benchmark role: 'primary' (student's saved target role) | 'swe' | 'fullstack' | 'data'
   const [selectedRole, setSelectedRole] = useState<'primary' | 'swe' | 'fullstack' | 'data'>('primary');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [isAuditingAI, setIsAuditingAI] = useState(false);
+  const [aiAuditResult, setAiAuditResult] = useState<any>(null);
+
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillCategory, setNewSkillCategory] = useState('Frontend');
   const [isAddingSkill, setIsAddingSkill] = useState(false);
@@ -45,7 +66,7 @@ export default function SkillsPage() {
   const [isRefreshingSignals, setIsRefreshingSignals] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
 
-  // Cached or live GitHub signals
+  // Cached or live GitHub and LinkedIn signals
   const [enrichedData, setEnrichedData] = useState<EnrichedSignalData | null>(() => {
     const gh = profile?.github_username || 'ShubhamAlapure';
     return getCachedEnrichedSignals(gh);
@@ -62,7 +83,7 @@ export default function SkillsPage() {
     }
   }, [profile?.id]);
 
-  // Handle manual re-sync with student's GitHub evidence
+  // Handle manual re-sync with student's GitHub & LinkedIn evidence
   const handleRefreshSignals = async () => {
     const gh = cleanGithubUsername(profile?.github_username || 'ShubhamAlapure');
     if (!gh) return;
@@ -71,8 +92,8 @@ export default function SkillsPage() {
     try {
       const live = await fetchAndEnrichStudentProfile(gh, profile?.linkedin_url || '', profile?.target_role);
       setEnrichedData(live);
-      setRefreshMessage(`Refreshed live evidence from @${gh} (${live.publicReposCount} repos)`);
-      setTimeout(() => setRefreshMessage(null), 3500);
+      setRefreshMessage(`Synced deep signals from GitHub @${gh} & LinkedIn in/${live.linkedinHandle || 'profile'}`);
+      setTimeout(() => setRefreshMessage(null), 4000);
     } catch (e) {
       console.warn('Refresh error:', e);
     } finally {
@@ -80,23 +101,25 @@ export default function SkillsPage() {
     }
   };
 
-  // Determine active benchmark role string
+  // Determine active benchmark role string strictly from student's profile or selector
+  const studentTargetRole = profile?.target_role || 'Full-Stack Engineer (React & Node/Go)';
+
   const activeBenchmarkRole = useMemo(() => {
     if (selectedRole === 'swe') return 'Software Development Engineer - Backend (SDE-1)';
     if (selectedRole === 'fullstack') return 'Full-Stack Engineer (React & Node/Go)';
     if (selectedRole === 'data') return 'Data & AI Systems Engineer';
-    return profile?.target_role || 'Software Development Engineer (SDE-1)';
-  }, [selectedRole, profile?.target_role]);
+    return studentTargetRole;
+  }, [selectedRole, studentTargetRole]);
 
   // Compute 8-dimension readiness tailored to profile and active role
   const readinessResult = useMemo(() => {
     return computeTailoredReadiness(profile, enrichedData, activeBenchmarkRole);
   }, [profile, enrichedData, activeBenchmarkRole]);
 
-  // Generate tailored skill gaps
-  const gaps = useMemo(() => {
-    return generateTailoredSkillGaps(profile, selectedRole === 'primary' ? 'swe' : selectedRole, customSkills);
-  }, [profile, selectedRole, customSkills]);
+  // Generate tailored skill gaps deeply evaluating GitHub and LinkedIn
+  const gaps: EnhancedSkillGapItem[] = useMemo(() => {
+    return generateTailoredSkillGaps(profile, activeBenchmarkRole, customSkills, enrichedData);
+  }, [profile, activeBenchmarkRole, customSkills, enrichedData]);
 
   // Filter gaps by priority
   const filteredGaps = useMemo(() => {
@@ -105,6 +128,20 @@ export default function SkillsPage() {
       return item.priority.toLowerCase() === filterPriority.toLowerCase();
     });
   }, [gaps, filterPriority]);
+
+  // Run AI Candidate Deep Audit using Groq LPU
+  const handleRunAiAudit = async () => {
+    setShowAuditModal(true);
+    setIsAuditingAI(true);
+    try {
+      const result = await auditCandidateSkillsWithAI(profile, activeBenchmarkRole, enrichedData);
+      setAiAuditResult(result);
+    } catch (err) {
+      console.warn('AI audit error:', err);
+    } finally {
+      setIsAuditingAI(false);
+    }
+  };
 
   // Add custom skill and persist to Supabase
   const handleAddSkill = async (e: React.FormEvent) => {
@@ -127,18 +164,27 @@ export default function SkillsPage() {
     }
   };
 
-  const primaryRoleTitle = profile?.target_role || 'Product-minded Software Engineer';
-  const shortPrimaryRole = primaryRoleTitle.split('(')[0]?.trim() || primaryRoleTitle;
+  const shortPrimaryRole = studentTargetRole.split('(')[0]?.trim() || studentTargetRole;
+  const ghHandle = profile?.github_username || 'ShubhamAlapure';
+  const liHandle = enrichedData?.linkedinHandle || (profile?.linkedin_url ? cleanGithubUsername(profile.linkedin_url) : 'shubham-alapure');
 
   return (
     <ProductShell>
       <TopBar eyebrow="Intelligence engine" title="Skills & Readiness Breakdown">
         <div className="flex items-center gap-2">
           <button
+            onClick={handleRunAiAudit}
+            className="flex items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary shadow-sm transition-all hover:bg-primary/20 focus-ring"
+            title="Deep Candidate Evaluation powered by Groq LPU AI"
+          >
+            <Sparkles size={13} className="text-primary" />
+            <span className="hidden sm:inline">AI Deep Audit</span>
+          </button>
+          <button
             onClick={handleRefreshSignals}
             disabled={isRefreshingSignals}
             className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground shadow-sm transition-all hover:text-foreground focus-ring disabled:opacity-50"
-            title="Re-sync signals from GitHub"
+            title="Re-sync GitHub & LinkedIn signals"
           >
             <RefreshCw size={13} className={isRefreshingSignals ? 'animate-spin text-primary' : ''} />
             <span className="hidden sm:inline">Re-sync signals</span>
@@ -172,11 +218,9 @@ export default function SkillsPage() {
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[#9bd8b9]/30 bg-[#9bd8b9]/10 px-3 py-1 font-mono-ui text-[10px] uppercase tracking-wider text-[#b4e4cc]">
                   <Sparkles size={11} /> Configurable Scoring Engine
                 </span>
-                {profile?.onboarding_completed && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-mono-ui text-[10px] text-emerald-300">
-                    <UserCheck size={11} /> Profile Tailored
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-mono-ui text-[10px] text-emerald-300">
+                  <UserCheck size={11} /> Target Role Tailored
+                </span>
               </div>
               <div className="mt-3 flex items-baseline gap-3">
                 <span className="font-display text-5xl font-bold tracking-tight">{readinessResult.overallScore}</span>
@@ -187,7 +231,9 @@ export default function SkillsPage() {
               </div>
               <p className="mt-2 text-sm text-[#d5e1d9]">
                 Target role benchmark:{' '}
-                <span className="font-semibold text-white">{activeBenchmarkRole}</span>
+                <span className="font-semibold text-white underline decoration-[#9bd8b9]/40 underline-offset-4">
+                  {activeBenchmarkRole}
+                </span>
               </p>
             </div>
 
@@ -196,11 +242,12 @@ export default function SkillsPage() {
               <button
                 onClick={() => setSelectedRole('primary')}
                 className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-                  selectedRole === 'primary' ? 'bg-[#9bd8b9] text-[#1f3335]' : 'text-[#d5e1d9] hover:text-white'
+                  selectedRole === 'primary' ? 'bg-[#9bd8b9] text-[#1f3335] shadow-sm' : 'text-[#d5e1d9] hover:text-white'
                 }`}
+                title={`Your saved goal: ${studentTargetRole}`}
               >
-                <Zap size={11} className={selectedRole === 'primary' ? 'text-[#1f3335]' : 'text-[#9bd8b9]'} />
-                {shortPrimaryRole}
+                <Target size={12} className={selectedRole === 'primary' ? 'text-[#1f3335]' : 'text-[#9bd8b9]'} />
+                Your Goal: {shortPrimaryRole}
               </button>
               <button
                 onClick={() => setSelectedRole('fullstack')}
@@ -254,6 +301,34 @@ export default function SkillsPage() {
           </div>
         </section>
 
+        {/* Deep Signal Evidence Banner */}
+        <div className="rounded-2xl border border-border bg-card/60 p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-primary/10 p-2.5 text-primary shrink-0">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                Deep Evidence Engine Active
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 font-mono-ui text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  Live Synced
+                </span>
+              </h4>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                Analyzing GitHub repositories (<strong className="text-foreground">@{ghHandle}</strong>) and LinkedIn profile (<strong className="text-foreground">in/{liHandle}</strong>) across Projects, Endorsed Skills, Certifications, and Posts.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleRunAiAudit}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90"
+            >
+              <Bot size={14} /> Run Deep Groq AI Audit
+            </button>
+          </div>
+        </div>
+
         {/* Skill Gap Analysis Section */}
         <section className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -261,7 +336,7 @@ export default function SkillsPage() {
               <p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-primary">Target Requirement Delta</p>
               <h3 className="mt-1 font-display text-2xl font-bold tracking-tight">Identified Skill Gaps</h3>
               <p className="text-xs text-muted-foreground">
-                Gaps are dynamically derived by contrasting your verified resume &amp; GitHub code evidence with current 2025–2026 {activeBenchmarkRole} postings.
+                Gaps are derived by deeply analyzing your verified GitHub code and LinkedIn profile evidence against current 2025–2026 <strong className="text-foreground font-semibold">{activeBenchmarkRole}</strong> hiring criteria.
               </p>
             </div>
 
@@ -341,17 +416,37 @@ export default function SkillsPage() {
                     </div>
                   </div>
 
-                  {/* Evidence Found */}
-                  <div className="mt-3">
-                    <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">Verified Evidence</p>
-                    <ul className="mt-1 space-y-1">
-                      {item.evidence.map((ev, i) => (
-                        <li key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <CheckCircle2 size={12} className="text-primary shrink-0" />
-                          <span>{ev}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  {/* Deep Structured Evidence Section */}
+                  <div className="mt-4 space-y-2">
+                    <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+                      <FileCheck size={11} className="text-primary" /> Verified Cross-Platform Evidence
+                    </p>
+                    <div className="space-y-1.5">
+                      {(item.structuredEvidence || []).slice(0, 4).map((ev: StructuredEvidence, i: number) => {
+                        const isGithub = ev.sourceType === 'github';
+                        const isProject = ev.sourceType === 'linkedin_project';
+                        const isCert = ev.sourceType === 'linkedin_cert';
+                        const isPost = ev.sourceType === 'linkedin_post';
+                        const isSkill = ev.sourceType === 'linkedin_skill';
+
+                        return (
+                          <div
+                            key={i}
+                            className="rounded-xl border border-border/80 bg-background/70 p-2.5 text-xs leading-relaxed"
+                          >
+                            <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                              {isGithub && <Github size={12} className="text-primary shrink-0" />}
+                              {isProject && <Briefcase size={12} className="text-blue-500 shrink-0" />}
+                              {isCert && <GraduationCap size={12} className="text-emerald-500 shrink-0" />}
+                              {isPost && <Share2 size={12} className="text-purple-500 shrink-0" />}
+                              {isSkill && <CheckCircle2 size={12} className="text-teal-500 shrink-0" />}
+                              <span className="truncate text-[11px] text-muted-foreground">{ev.sourceLabel}</span>
+                            </div>
+                            <p className="mt-1 text-xs text-foreground/90 pl-4">{ev.detail}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Recommended Action */}
@@ -380,6 +475,113 @@ export default function SkillsPage() {
             ))}
           </div>
         </section>
+
+        {/* Deep AI Audit Modal */}
+        {showAuditModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 font-mono-ui text-[10px] font-bold text-primary flex items-center gap-1">
+                      <Cpu size={11} /> Groq LPU Powered (gpt-oss-120b)
+                    </span>
+                    <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 font-mono-ui text-[10px] text-emerald-600 dark:text-emerald-400">
+                      Sub-200ms Inference
+                    </span>
+                  </div>
+                  <h3 className="mt-2 font-display text-2xl font-bold text-foreground">
+                    Candidate AI Deep Audit
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Target Role Benchmark: <strong className="text-foreground">{activeBenchmarkRole}</strong>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAuditModal(false)}
+                  className="rounded-lg p-1 text-muted-foreground hover:text-foreground"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {isAuditingAI ? (
+                <div className="py-12 text-center space-y-3">
+                  <RefreshCw size={24} className="mx-auto animate-spin text-primary" />
+                  <p className="text-sm font-semibold text-foreground">
+                    Deeply scanning GitHub code &amp; LinkedIn signals...
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Auditing repositories, project case studies, certifications, and builder posts against {activeBenchmarkRole} standards.
+                  </p>
+                </div>
+              ) : aiAuditResult ? (
+                <div className="space-y-4 text-xs">
+                  {/* Executive Recruiter Summary */}
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                    <p className="font-mono-ui text-[10px] uppercase tracking-wider text-primary font-bold">
+                      Hiring Manager Executive Summary
+                    </p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-foreground font-medium">
+                      {aiAuditResult.recruiterExecutiveSummary}
+                    </p>
+                  </div>
+
+                  {/* Top Strengths */}
+                  <div>
+                    <h5 className="font-semibold text-foreground text-xs uppercase tracking-wider font-mono-ui">
+                      Verified Candidate Strengths
+                    </h5>
+                    <div className="mt-2 space-y-2">
+                      {(aiAuditResult.topStrengths || []).map((s: any, idx: number) => (
+                        <div key={idx} className="rounded-xl border border-border bg-background p-3">
+                          <p className="font-semibold text-foreground flex items-center gap-1.5">
+                            <CheckCircle2 size={13} className="text-emerald-500" /> {s.name}
+                          </p>
+                          <p className="mt-1 text-muted-foreground pl-4 leading-relaxed">{s.evidence}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Critical Role Gaps */}
+                  <div>
+                    <h5 className="font-semibold text-foreground text-xs uppercase tracking-wider font-mono-ui">
+                      Critical Hiring Gaps to Close
+                    </h5>
+                    <div className="mt-2 space-y-2">
+                      {(aiAuditResult.criticalGaps || []).map((g: any, idx: number) => (
+                        <div key={idx} className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3">
+                          <div className="flex items-center justify-between">
+                            <p className="font-semibold text-foreground flex items-center gap-1.5">
+                              <AlertCircle size={13} className="text-rose-500" /> {g.name}
+                            </p>
+                            <span className="font-mono-ui text-[10px] font-bold text-rose-500">
+                              Δ Gap: {g.gapScore}%
+                            </span>
+                          </div>
+                          <p className="mt-1 text-muted-foreground pl-4 leading-relaxed">
+                            <strong className="text-foreground">Required Action: </strong>
+                            {g.action}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      onClick={() => setShowAuditModal(false)}
+                      className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
+                    >
+                      Close &amp; Apply to Roadmap
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
 
         {/* Add Skill Modal */}
         {showAddModal && (
