@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import {
   Award,
   BookOpen,
@@ -13,32 +13,125 @@ import {
   RefreshCw,
   Sparkles,
   Upload,
+  Edit3,
+  X,
+  Plus,
+  Download,
+  Building2,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
 import { ProductShell, TopBar } from '@/components/career-shell';
 import { mockStudent } from '@/lib/mock/career-data';
-
-import { useAuth } from '@/context/auth-context';
+import { useAuth, type UserProfile } from '@/context/auth-context';
 
 export default function ProfilePage() {
-  const { profile, uploadResume, isConfigured } = useAuth();
+  const { profile, user, updateProfile, uploadResume, isConfigured } = useAuth();
   const [isSyncingGithub, setIsSyncingGithub] = useState(false);
   const [syncStatus, setSyncStatus] = useState('Synced 2 hours ago');
-  const [resumeName, setResumeName] = useState(profile?.resume_name || 'Aarav_Sharma_Resume_2026.pdf');
+  const [resumeName, setResumeName] = useState(profile?.resume_name || 'Resume.pdf');
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
-  const fullName = profile?.full_name || mockStudent.fullName;
-  const targetRole = profile?.target_role || mockStudent.target;
-  const college = profile?.college || mockStudent.school;
-  const location = profile?.location || mockStudent.location;
-  const cgpa = profile?.cgpa || mockStudent.gpa;
-  const bio = profile?.bio || mockStudent.bio;
+  // Fallbacks from profile -> user metadata -> mock
+  const fullName =
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    (user?.email ? user.email.split('@')[0] : mockStudent.fullName);
+
+  const targetRole = profile?.target_role || 'Software Development Engineer (SDE-1)';
+  const college = profile?.college || 'MIT ADT University, Pune';
+  const degree = profile?.degree || 'B.Tech Computer Engineering';
+  const yearOfStudy = profile?.year_of_study || '3rd Year (Class of 2026)';
+  const location = profile?.location || 'Pune, Maharashtra, India';
+  const cgpa = profile?.cgpa || '8.5 / 10.0';
+  const bio =
+    profile?.bio ||
+    'Aspiring software development engineer focused on scalable distributed systems, microservices, and algorithmic problem-solving.';
+  const targetCompanies =
+    profile?.target_companies && profile.target_companies.length > 0
+      ? profile.target_companies
+      : ['Razorpay', 'PhonePe', 'Swiggy', 'Zomato', 'Atlassian India', 'TCS Digital'];
+
   const initials = fullName
-    .split(' ')
-    .map((n) => n[0])
+    .trim()
+    .split(/\s+/)
+    .map((n: string) => n[0])
     .slice(0, 2)
     .join('')
-    .toUpperCase() || 'ST';
+    .toUpperCase() || 'SA';
+
+  // Edit Modal Form State
+  const [editName, setEditName] = useState(fullName);
+  const [editRole, setEditRole] = useState(targetRole);
+  const [editCollege, setEditCollege] = useState(college);
+  const [editDegree, setEditDegree] = useState(degree);
+  const [editYear, setEditYear] = useState(yearOfStudy);
+  const [editCgpa, setEditCgpa] = useState(cgpa);
+  const [editLocation, setEditLocation] = useState(location);
+  const [editBio, setEditBio] = useState(bio);
+  const [editGithub, setEditGithub] = useState(profile?.github_username || '');
+  const [editLinkedin, setEditLinkedin] = useState(profile?.linkedin_url || '');
+  const [editPortfolio, setEditPortfolio] = useState(profile?.portfolio_url || '');
+  const [editCompanies, setEditCompanies] = useState<string[]>(targetCompanies);
+  const [newCompanyInput, setNewCompanyInput] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const openEditModal = () => {
+    setEditName(fullName);
+    setEditRole(targetRole);
+    setEditCollege(college);
+    setEditDegree(degree);
+    setEditYear(yearOfStudy);
+    setEditCgpa(cgpa);
+    setEditLocation(location);
+    setEditBio(bio);
+    setEditGithub(profile?.github_username || '');
+    setEditLinkedin(profile?.linkedin_url || '');
+    setEditPortfolio(profile?.portfolio_url || '');
+    setEditCompanies(targetCompanies);
+    setShowEditModal(true);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    const { error } = await updateProfile({
+      full_name: editName.trim(),
+      target_role: editRole.trim(),
+      college: editCollege.trim(),
+      degree: editDegree.trim(),
+      year_of_study: editYear.trim(),
+      cgpa: editCgpa.trim(),
+      location: editLocation.trim(),
+      bio: editBio.trim(),
+      github_username: editGithub.trim().replace(/^https?:\/\/(www\.)?github\.com\//, ''),
+      linkedin_url: editLinkedin.trim(),
+      portfolio_url: editPortfolio.trim(),
+      target_companies: editCompanies,
+    });
+    setIsSaving(false);
+    if (!error) {
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        setShowEditModal(false);
+      }, 900);
+    }
+  };
+
+  const handleAddCompany = () => {
+    if (newCompanyInput.trim() && !editCompanies.includes(newCompanyInput.trim())) {
+      setEditCompanies([...editCompanies, newCompanyInput.trim()]);
+      setNewCompanyInput('');
+    }
+  };
+
+  const handleRemoveCompany = (c: string) => {
+    setEditCompanies(editCompanies.filter((item) => item !== c));
+  };
 
   const handleSimulateSync = () => {
     setIsSyncingGithub(true);
@@ -48,7 +141,7 @@ export default function ProfilePage() {
     }, 1200);
   };
 
-  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleResumeUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setIsUploading(true);
@@ -65,14 +158,27 @@ export default function ProfilePage() {
   return (
     <ProductShell>
       <TopBar eyebrow="Your foundation" title="Student Profile">
-        <button
-          onClick={handleSimulateSync}
-          disabled={isSyncingGithub}
-          className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold transition-colors hover:border-primary focus-ring"
-        >
-          <RefreshCw size={13} className={isSyncingGithub ? 'animate-spin text-primary' : 'text-muted-foreground'} />
-          <span>{isSyncingGithub ? 'Syncing...' : 'Sync sources'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openEditModal}
+            className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 focus-ring"
+            data-testid="button-edit-profile"
+          >
+            <Edit3 size={13} />
+            <span>Edit Profile</span>
+          </button>
+          <button
+            onClick={handleSimulateSync}
+            disabled={isSyncingGithub}
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold transition-colors hover:border-primary focus-ring"
+          >
+            <RefreshCw
+              size={13}
+              className={isSyncingGithub ? 'animate-spin text-primary' : 'text-muted-foreground'}
+            />
+            <span>{isSyncingGithub ? 'Syncing...' : 'Sync sources'}</span>
+          </button>
+        </div>
       </TopBar>
 
       <div className="page-in mx-auto max-w-[1420px] space-y-7 px-5 py-6 sm:px-8 lg:px-11 lg:py-8">
@@ -91,6 +197,12 @@ export default function ProfilePage() {
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 font-mono-ui text-[10px] font-semibold text-primary">
                     <Sparkles size={11} /> {isConfigured ? 'Live Supabase Profile' : 'Verified Student'}
                   </span>
+                  <button
+                    onClick={openEditModal}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+                  >
+                    <Edit3 size={11} /> Edit
+                  </button>
                 </div>
                 <p className="text-sm font-medium text-foreground/80">{targetRole}</p>
                 <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-muted-foreground">
@@ -109,7 +221,11 @@ export default function ProfilePage() {
 
             <div className="flex flex-wrap items-center gap-2">
               <a
-                href={profile?.github_username ? `https://github.com/${profile.github_username}` : 'https://github.com'}
+                href={
+                  profile?.github_username
+                    ? `https://github.com/${profile.github_username}`
+                    : 'https://github.com'
+                }
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary"
@@ -124,19 +240,36 @@ export default function ProfilePage() {
               >
                 <Linkedin size={14} /> LinkedIn
               </a>
-              <a
-                href={profile?.portfolio_url || 'https://aaravsharma.dev'}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary"
-              >
-                <ExternalLink size={14} /> Portfolio
-              </a>
+              {profile?.portfolio_url && (
+                <a
+                  href={profile.portfolio_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary"
+                >
+                  <ExternalLink size={14} /> Portfolio
+                </a>
+              )}
             </div>
           </div>
 
           <div className="mt-6 border-t border-border pt-5">
             <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">{bio}</p>
+          </div>
+
+          {/* Target Companies Pills */}
+          <div className="mt-4 flex flex-wrap items-center gap-2 pt-2 border-t border-border/50">
+            <span className="text-[11px] font-semibold text-foreground flex items-center gap-1">
+              <Building2 size={13} className="text-primary" /> Target Companies:
+            </span>
+            {targetCompanies.map((c) => (
+              <span
+                key={c}
+                className="rounded-lg border border-border bg-background/80 px-2.5 py-0.5 font-mono-ui text-[10px] text-foreground"
+              >
+                {c}
+              </span>
+            ))}
           </div>
         </section>
 
@@ -146,8 +279,12 @@ export default function ProfilePage() {
           <section className="rounded-2xl border border-border bg-card p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-primary">Structured Intelligence</p>
-                <h3 className="mt-1 font-display text-lg font-bold tracking-tight">Resume & Document Evidence</h3>
+                <p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-primary">
+                  Structured Intelligence
+                </p>
+                <h3 className="mt-1 font-display text-lg font-bold tracking-tight">
+                  Resume & Document Evidence
+                </h3>
               </div>
               <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 font-mono-ui text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
                 Parsed & Normalized
@@ -158,12 +295,14 @@ export default function ProfilePage() {
               <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
                 <FileText size={22} />
               </div>
-              <p className="mt-3 text-sm font-semibold text-foreground">{resumeName}</p>
-              <p className="mt-1 text-xs text-muted-foreground">PDF document · Uploaded March 2025 · 96% parser confidence</p>
+              <p className="mt-3 text-sm font-semibold text-foreground">{profile?.resume_name || resumeName}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                PDF document · Stored in Supabase Private Storage · 96% parser confidence
+              </p>
 
               {uploadSuccess && (
                 <p className="mt-2 text-xs font-semibold text-emerald-500">
-                  New resume uploaded and parsed into structured profile!
+                  New resume uploaded and saved to your Supabase profile!
                 </p>
               )}
 
@@ -171,31 +310,51 @@ export default function ProfilePage() {
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 focus-ring">
                   <Upload size={13} className={isUploading ? 'animate-spin' : ''} />
                   <span>{isUploading ? 'Uploading to Supabase…' : 'Upload new version'}</span>
-                  <input type="file" accept=".pdf,.docx" onChange={handleResumeUpload} disabled={isUploading} className="hidden" />
+                  <input
+                    type="file"
+                    accept=".pdf,.docx"
+                    onChange={handleResumeUpload}
+                    disabled={isUploading}
+                    className="hidden"
+                  />
                 </label>
-                <a
-                  href="#download"
-                  onClick={(e) => { e.preventDefault(); alert('Demo: Downloading ' + resumeName); }}
-                  className="rounded-xl border border-border px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-secondary"
-                >
-                  View parsed JSON
-                </a>
+
+                {profile?.resume_url ? (
+                  <a
+                    href={profile.resume_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <Download size={13} /> Download Resume
+                  </a>
+                ) : (
+                  <span className="rounded-xl border border-border px-3.5 py-2 text-xs font-semibold text-muted-foreground">
+                    No PDF attached
+                  </span>
+                )}
               </div>
             </div>
 
             <div className="mt-5 grid grid-cols-3 gap-3">
               <div className="rounded-xl border border-border bg-background p-3">
-                <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">Skills Found</p>
+                <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">
+                  Skills Found
+                </p>
                 <p className="mt-1 font-display text-xl font-bold text-primary">14</p>
                 <p className="text-[10px] text-muted-foreground">Normalized against taxonomy</p>
               </div>
               <div className="rounded-xl border border-border bg-background p-3">
-                <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">Experience</p>
+                <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">
+                  Experience
+                </p>
                 <p className="mt-1 font-display text-xl font-bold text-foreground">2 Roles</p>
                 <p className="text-[10px] text-muted-foreground">Quantified impact verified</p>
               </div>
               <div className="rounded-xl border border-border bg-background p-3">
-                <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">Projects</p>
+                <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">
+                  Projects
+                </p>
                 <p className="mt-1 font-display text-xl font-bold text-foreground">3 Items</p>
                 <p className="text-[10px] text-muted-foreground">Linked to public repositories</p>
               </div>
@@ -206,8 +365,12 @@ export default function ProfilePage() {
           <section className="rounded-2xl border border-border bg-card p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-primary">Live Integrations</p>
-                <h3 className="mt-1 font-display text-lg font-bold tracking-tight">Verified Platforms</h3>
+                <p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-primary">
+                  Live Integrations
+                </p>
+                <h3 className="mt-1 font-display text-lg font-bold tracking-tight">
+                  Verified Platforms
+                </h3>
               </div>
               <span className="font-mono-ui text-[10px] text-muted-foreground">{syncStatus}</span>
             </div>
@@ -221,18 +384,17 @@ export default function ProfilePage() {
                       <Github size={18} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-foreground">GitHub (@aaravsharma)</p>
-                      <p className="text-[11px] text-muted-foreground">34 Repos · 482 Commits this year</p>
+                      <p className="text-xs font-bold text-foreground">
+                        GitHub (@{profile?.github_username || 'connected'})
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Active repositories · Commits synchronized
+                      </p>
                     </div>
                   </div>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 size={11} /> Connected
                   </span>
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="rounded-md bg-secondary px-2 py-0.5 font-mono-ui text-[9px] text-muted-foreground">TypeScript 58%</span>
-                  <span className="rounded-md bg-secondary px-2 py-0.5 font-mono-ui text-[9px] text-muted-foreground">Python 24%</span>
-                  <span className="rounded-md bg-secondary px-2 py-0.5 font-mono-ui text-[9px] text-muted-foreground">Rust 18%</span>
                 </div>
               </div>
 
@@ -244,8 +406,12 @@ export default function ProfilePage() {
                       <Linkedin size={18} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-foreground">LinkedIn (in/aaravsharma-dev)</p>
-                      <p className="text-[11px] text-muted-foreground">500+ Connections · COEP Tech Network</p>
+                      <p className="text-xs font-bold text-foreground">
+                        LinkedIn ({profile?.linkedin_url ? 'Profile linked' : 'Connect link'})
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {college} Student Network
+                      </p>
                     </div>
                   </div>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
@@ -254,7 +420,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* COEP Placement System */}
+              {/* University Training & Placement Cell */}
               <div className="rounded-xl border border-border bg-background p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -262,8 +428,12 @@ export default function ProfilePage() {
                       <GraduationCap size={18} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-foreground">COEP Training &amp; Placement Cell</p>
-                      <p className="text-[11px] text-muted-foreground">Institutional verified student ID: 112103048</p>
+                      <p className="text-xs font-bold text-foreground">
+                        {college} Placement Cell
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {degree} · {yearOfStudy}
+                      </p>
                     </div>
                   </div>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
@@ -275,133 +445,280 @@ export default function ProfilePage() {
           </section>
         </div>
 
-        {/* Education & Work Experience */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Education */}
-          <section className="rounded-2xl border border-border bg-card p-6">
-            <div className="flex items-center gap-2">
-              <GraduationCap size={18} className="text-primary" />
-              <h3 className="font-display text-lg font-bold tracking-tight">Education & Coursework</h3>
+        {/* Academic Profile Details */}
+        <section className="rounded-2xl border border-border bg-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-primary">
+                Academics
+              </p>
+              <h3 className="mt-1 font-display text-lg font-bold tracking-tight">
+                Education & Degree Credentials
+              </h3>
             </div>
-            <div className="mt-5 space-y-4">
-              <div className="rounded-xl border border-border bg-background p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-foreground">COEP Technological University, Pune</h4>
-                    <p className="text-xs text-primary font-medium">B.Tech in Computer Engineering (3rd Year)</p>
-                  </div>
-                  <span className="font-mono-ui text-xs font-semibold text-muted-foreground">2022 – 2026</span>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Department of Computer Engineering &amp; IT · CGPA: 8.94 / 10.0
-                </p>
-                <div className="mt-3">
-                  <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">Key Coursework:</p>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {['Data Structures & Algorithms', 'Design & Analysis of Algorithms', 'Operating Systems', 'Database Management Systems (DBMS)', 'Computer Networks'].map((course) => (
-                      <span key={course} className="rounded-md bg-secondary px-2 py-1 text-[11px] text-secondary-foreground">
-                        {course}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+            <button
+              onClick={openEditModal}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-accent transition-colors"
+            >
+              <Edit3 size={13} /> Edit credentials
+            </button>
+          </div>
 
-          {/* Experience */}
-          <section className="rounded-2xl border border-border bg-card p-6">
-            <div className="flex items-center gap-2">
-              <Briefcase size={18} className="text-primary" />
-              <h3 className="font-display text-lg font-bold tracking-tight">Work & Leadership Experience</h3>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-border bg-background p-4">
+              <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">
+                Institution
+              </p>
+              <p className="mt-1 text-sm font-bold text-foreground">{college}</p>
+              <p className="text-[11px] text-muted-foreground">{location}</p>
             </div>
-            <div className="mt-5 space-y-4">
-              <div className="rounded-xl border border-border bg-background p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-foreground">Veritas Technologies / Makers Lab Pune</h4>
-                    <p className="text-xs text-primary font-medium">Software Engineering Intern</p>
-                  </div>
-                  <span className="font-mono-ui text-xs font-semibold text-muted-foreground">Jun 2024 – Aug 2024</span>
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  Built prototype web applications in React 18, TypeScript, and Node.js for cloud analytics dashboards. Reduced query latency by 40% using optimized Redis caching and pagination.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-background p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-foreground">COEP Computer Society of India (CSI)</h4>
-                    <p className="text-xs text-primary font-medium">Technical Secretary &amp; Web Lead</p>
-                  </div>
-                  <span className="font-mono-ui text-xs font-semibold text-muted-foreground">Sep 2023 – Present</span>
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  Lead weekly technical workshops for 120+ students on DSA problem-solving and modern web architecture. Manage the annual flagship technical festival portal.
-                </p>
-              </div>
+            <div className="rounded-xl border border-border bg-background p-4">
+              <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">
+                Degree & Branch
+              </p>
+              <p className="mt-1 text-sm font-bold text-foreground">{degree}</p>
+              <p className="text-[11px] text-muted-foreground">{yearOfStudy}</p>
             </div>
-          </section>
-        </div>
-
-        {/* Certifications & Target Preferences */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Certifications */}
-          <section className="rounded-2xl border border-border bg-card p-6">
-            <div className="flex items-center gap-2">
-              <Award size={18} className="text-primary" />
-              <h3 className="font-display text-lg font-bold tracking-tight">Certifications & Credentials</h3>
+            <div className="rounded-xl border border-border bg-background p-4">
+              <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">
+                Cumulative CGPA
+              </p>
+              <p className="mt-1 font-display text-xl font-bold text-primary">{cgpa}</p>
+              <p className="text-[11px] text-muted-foreground">Academic standing verified</p>
             </div>
-            <div className="mt-5 space-y-3.5">
-              <div className="flex items-start justify-between rounded-xl border border-border bg-background p-4">
-                <div>
-                  <h4 className="text-xs font-bold text-foreground">AWS Certified Cloud Practitioner</h4>
-                  <p className="text-[11px] text-muted-foreground">Amazon Web Services · Issued Nov 2024 · ID: AWS-849204</p>
-                </div>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono-ui text-[10px] font-semibold text-primary">Active</span>
-              </div>
-              <div className="flex items-start justify-between rounded-xl border border-border bg-background p-4">
-                <div>
-                  <h4 className="text-xs font-bold text-foreground">NPTEL Elite+Silver in Programming &amp; Algorithms</h4>
-                  <p className="text-[11px] text-muted-foreground">IIT Kharagpur / Ministry of Education, India · Top 2% National</p>
-                </div>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono-ui text-[10px] font-semibold text-primary">Verified</span>
-              </div>
+            <div className="rounded-xl border border-border bg-background p-4">
+              <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">
+                Target Role
+              </p>
+              <p className="mt-1 text-sm font-bold text-foreground">{targetRole}</p>
+              <p className="text-[11px] text-muted-foreground">Active recruitment path</p>
             </div>
-          </section>
-
-          {/* Target Role & Career Preferences */}
-          <section className="rounded-2xl border border-border bg-card p-6">
-            <div className="flex items-center gap-2">
-              <BookOpen size={18} className="text-primary" />
-              <h3 className="font-display text-lg font-bold tracking-tight">Target Role & Search Parameters</h3>
-            </div>
-            <div className="mt-5 space-y-3">
-              <div className="rounded-xl border border-border bg-background p-3.5">
-                <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">Target Roles</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {mockStudent.targetRoles.map((role) => (
-                    <span key={role} className="rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-                      {role}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-xl border border-border bg-background p-3.5">
-                <p className="font-mono-ui text-[9px] uppercase tracking-wider text-muted-foreground">Preferred Locations</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {mockStudent.preferredLocations.map((loc) => (
-                    <span key={loc} className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground">
-                      {loc}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
+
+      {/* EDIT PROFILE MODAL */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[90vh] w-full max-w-[650px] overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div>
+                <h2 className="font-display text-xl font-bold">Edit Student Profile</h2>
+                <p className="text-xs text-muted-foreground">
+                  Update your credentials, target role, and career objectives.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {saveSuccess && (
+              <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <Check size={14} /> Profile updated successfully in Supabase!
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProfile} className="mt-5 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">Target Role</label>
+                  <input
+                    type="text"
+                    required
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground">
+                  College / University
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editCollege}
+                  onChange={(e) => setEditCollege(e.target.value)}
+                  className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">
+                    Degree & Branch
+                  </label>
+                  <input
+                    type="text"
+                    value={editDegree}
+                    onChange={(e) => setEditDegree(e.target.value)}
+                    className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">
+                    Year of Study
+                  </label>
+                  <input
+                    type="text"
+                    value={editYear}
+                    onChange={(e) => setEditYear(e.target.value)}
+                    className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">
+                    CGPA / Percentage
+                  </label>
+                  <input
+                    type="text"
+                    value={editCgpa}
+                    onChange={(e) => setEditCgpa(e.target.value)}
+                    className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">Location</label>
+                  <input
+                    type="text"
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground">
+                  Professional Bio / Summary
+                </label>
+                <textarea
+                  rows={3}
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-input bg-background p-3 text-xs outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">GitHub</label>
+                  <input
+                    type="text"
+                    value={editGithub}
+                    onChange={(e) => setEditGithub(e.target.value)}
+                    placeholder="username"
+                    className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">LinkedIn URL</label>
+                  <input
+                    type="url"
+                    value={editLinkedin}
+                    onChange={(e) => setEditLinkedin(e.target.value)}
+                    placeholder="https://linkedin.com/in/..."
+                    className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">Portfolio URL</label>
+                  <input
+                    type="url"
+                    value={editPortfolio}
+                    onChange={(e) => setEditPortfolio(e.target.value)}
+                    placeholder="https://..."
+                    className="mt-1 h-10 w-full rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Target Companies */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground">
+                  Target Companies
+                </label>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {editCompanies.map((c) => (
+                    <span
+                      key={c}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-foreground"
+                    >
+                      {c}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCompany(c)}
+                        className="hover:text-destructive"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="text"
+                    value={newCompanyInput}
+                    onChange={(e) => setNewCompanyInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCompany();
+                      }
+                    }}
+                    placeholder="Add target company (e.g. Uber, Flipkart)"
+                    className="h-9 flex-1 rounded-xl border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCompany}
+                    className="rounded-xl border border-border bg-card px-3 text-xs font-semibold hover:border-primary"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3 border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-50"
+                >
+                  {isSaving ? 'Saving to Supabase…' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </ProductShell>
   );
 }

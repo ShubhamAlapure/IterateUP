@@ -4,24 +4,51 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  Circle,
-  Link2,
+  Building2,
+  GraduationCap,
   Sparkles,
   Upload,
   FileText,
   AlertCircle,
   CheckCircle2,
   Globe,
-  Database
+  Database,
+  UserRound,
+  Briefcase,
+  MapPin,
+  X,
+  Plus,
 } from 'lucide-react';
 import { DemoPill, Wordmark } from '@/components/career-shell';
 import { useAuth } from '@/context/auth-context';
 
 const steps = [
   { path: '/onboarding', label: 'Start' },
-  { path: '/onboarding/career-goal', label: 'Direction' },
-  { path: '/onboarding/profile', label: 'Profile' },
-  { path: '/onboarding/connect', label: 'Connect' },
+  { path: '/onboarding/career-goal', label: 'Goal' },
+  { path: '/onboarding/profile', label: 'Education' },
+  { path: '/onboarding/connect', label: 'Links & CV' },
+];
+
+const targetRoleSuggestions = [
+  'Software Development Engineer (SDE-1)',
+  'Backend Systems Engineer',
+  'Full-Stack Engineer (React & Node/Go)',
+  'Frontend Engineer',
+  'Cloud & DevOps Engineer',
+  'AI / ML Engineer',
+];
+
+const companySuggestions = [
+  'Razorpay',
+  'PhonePe',
+  'Swiggy',
+  'Zomato',
+  'Atlassian India',
+  'Google',
+  'Microsoft',
+  'TCS Digital',
+  'CRED',
+  'Uber India',
 ];
 
 export default function OnboardingPage({
@@ -32,14 +59,59 @@ export default function OnboardingPage({
   const [, setLocation] = useLocation();
   const { user, profile, updateProfile, uploadResume, isConfigured } = useAuth();
 
-  const [selected, setSelected] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  // Step 0 & 1: Goal
+  const [selectedMilestone, setSelectedMilestone] = useState(
+    'Land my first tech internship (₹40k–₹85k/mo)'
+  );
+  const [targetRole, setTargetRole] = useState(
+    profile?.target_role || 'Software Development Engineer (SDE-1)'
+  );
+  const [targetCompanies, setTargetCompanies] = useState<string[]>(
+    profile?.target_companies && profile.target_companies.length > 0
+      ? profile.target_companies
+      : ['Razorpay', 'PhonePe', 'Swiggy', 'Zomato', 'Atlassian India']
+  );
+  const [customCompanyInput, setCustomCompanyInput] = useState('');
+
+  // Step 2: Academics & Info
+  const [fullName, setFullName] = useState(
+    profile?.full_name || user?.user_metadata?.full_name || ''
+  );
+  const [collegeName, setCollegeName] = useState(
+    profile?.college || ''
+  );
+  const [degree, setDegree] = useState(
+    profile?.degree || 'B.Tech Computer Engineering'
+  );
+  const [yearOfStudy, setYearOfStudy] = useState(
+    profile?.year_of_study || '3rd Year (Class of 2026)'
+  );
+  const [cgpa, setCgpa] = useState(profile?.cgpa || '8.5 / 10.0');
+  const [locationStr, setLocationStr] = useState(
+    profile?.location || 'Pune, Maharashtra, India'
+  );
+
+  // Step 3: Links, CV & Bio
+  const [bio, setBio] = useState(
+    profile?.bio ||
+      'Aspiring engineer with strong algorithmic foundations, building robust distributed systems and web products.'
+  );
+  const [githubUrl, setGithubUrl] = useState(
+    profile?.github_username || ''
+  );
+  const [linkedinUrl, setLinkedinUrl] = useState(
+    profile?.linkedin_url || ''
+  );
+  const [portfolioUrl, setPortfolioUrl] = useState(
+    profile?.portfolio_url || ''
+  );
+
+  // Resume state
   const [uploadingResume, setUploadingResume] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>(null);
-  const [linkedinUrl, setLinkedinUrl] = useState(profile?.linkedin_url || '');
-  const [githubUrl, setGithubUrl] = useState(profile?.github_username || '');
-  const [targetRole, setTargetRole] = useState(profile?.target_role || 'Software Development Engineer (SDE-1)');
-  const [collegeName, setCollegeName] = useState(profile?.college || 'COEP Technological University, Pune');
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>(
+    profile?.resume_name ? { name: profile.resume_name, size: 'Saved' } : null
+  );
+  const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,47 +126,16 @@ export default function OnboardingPage({
       ? '/onboarding/connect'
       : '/dashboard';
 
-  const content = {
-    start: {
-      eyebrow: 'Let’s make this useful',
-      title: 'Start with the direction, not the destination.',
-      body: 'IterateUP gets smarter when it understands what you are moving toward. There is no perfect answer here — just a useful first one.',
-      options: [
-        'I am exploring what fits (Early exploration)',
-        'I have a role in mind (SDE / Backend / Frontend)',
-        'I am ready to apply (Active recruiting season)',
-        'Preparing for campus placements (Tier 1/2 college drive)',
-      ],
-    },
-    goal: {
-      eyebrow: 'Step 1 of 3 · Direction',
-      title: 'What would feel like a win this year?',
-      body: 'Choose your primary milestone. We will orient your roadmaps, gap assessments, and project builds around it.',
-      options: [
-        'Land my first tech internship (₹40k–₹85k/mo)',
-        'Clear campus placement at product company (₹12–24+ LPA)',
-        'Build 2-3 production-grade portfolio microservices',
-        'Master DSA & system design for high-bar technical rounds',
-      ],
-    },
-    profile: {
-      eyebrow: 'Step 2 of 3 · Your profile',
-      title: 'Tell us where you are starting from.',
-      body: 'A rough picture is enough. We use this to separate what is already working from what deserves focus.',
-      options: [
-        'I have 1-2 projects and good foundational DSA',
-        'I have completed web basics and want to specialize',
-        'I have prior internship or freelance client experience',
-        'I am starting fresh and want step-by-step guidance',
-      ],
-    },
-    connect: {
-      eyebrow: 'Step 3 of 3 · Connect & Upload',
-      title: 'Attach your resume or profile link.',
-      body: 'Connect your materials to Supabase Storage. IterateUP extracts skills and verifies competencies automatically.',
-      options: [],
-    },
-  }[step];
+  const handleAddCompany = (name: string) => {
+    const trimmed = name.trim();
+    if (trimmed && !targetCompanies.includes(trimmed)) {
+      setTargetCompanies([...targetCompanies, trimmed]);
+    }
+  };
+
+  const handleRemoveCompany = (name: string) => {
+    setTargetCompanies(targetCompanies.filter((c) => c !== name));
+  };
 
   const handleResumeChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,14 +147,15 @@ export default function OnboardingPage({
     try {
       const { url, name, error } = await uploadResume(file);
       if (error) {
-        setErrorMessage(error.message || 'Failed to upload resume to storage. Please check bucket permissions.');
+        setErrorMessage(
+          error.message || 'Failed to upload resume to storage. Please check bucket permissions.'
+        );
       } else {
         const sizeKb = Math.round(file.size / 1024);
         setUploadedFile({
           name: name || file.name,
           size: `${sizeKb} KB`,
         });
-        setSelected('resume');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Error processing resume upload.');
@@ -125,50 +167,68 @@ export default function OnboardingPage({
   const handleContinue = async () => {
     setErrorMessage(null);
 
-    // Save state at each transition
+    // Save progressively as user moves through steps
     if (index === 0) {
-      if (selected) {
-        await updateProfile({ bio: `Stage: ${selected}` });
-      }
       setLocation(nextPath);
       return;
     }
 
     if (index === 1) {
-      if (selected) {
-        await updateProfile({
-          target_role: targetRole,
-          bio: `${profile?.bio || ''} | Milestone: ${selected}`.trim(),
-        });
-      }
-      setLocation(nextPath);
-      return;
-    }
-
-    if (index === 2) {
       await updateProfile({
-        college: collegeName,
         target_role: targetRole,
+        target_companies: targetCompanies,
       });
       setLocation(nextPath);
       return;
     }
 
-    // Step 3: finalize onboarding
+    if (index === 2) {
+      if (!fullName.trim()) {
+        setErrorMessage('Please provide your full name.');
+        return;
+      }
+      if (!collegeName.trim()) {
+        setErrorMessage('Please enter your college or university name.');
+        return;
+      }
+
+      await updateProfile({
+        full_name: fullName.trim(),
+        college: collegeName.trim(),
+        degree: degree.trim(),
+        year_of_study: yearOfStudy,
+        cgpa: cgpa.trim(),
+        location: locationStr.trim(),
+      });
+      setLocation(nextPath);
+      return;
+    }
+
+    // Final Step 3: Complete onboarding
     setSubmitting(true);
     try {
       await updateProfile({
-        linkedin_url: linkedinUrl,
-        github_username: githubUrl.replace('https://github.com/', ''),
+        full_name: fullName.trim() || profile?.full_name,
+        college: collegeName.trim() || profile?.college,
+        degree: degree.trim() || profile?.degree,
+        year_of_study: yearOfStudy || profile?.year_of_study,
+        cgpa: cgpa.trim() || profile?.cgpa,
+        location: locationStr.trim() || profile?.location,
+        target_role: targetRole || profile?.target_role,
+        target_companies: targetCompanies,
+        bio: bio.trim(),
+        github_username: githubUrl.trim().replace(/^https?:\/\/(www\.)?github\.com\//, ''),
+        linkedin_url: linkedinUrl.trim(),
+        portfolio_url: portfolioUrl.trim(),
         onboarding_completed: true,
-        readiness_score: 68,
+        readiness_score: 65,
       });
 
       window.setTimeout(() => {
         setLocation('/dashboard');
       }, 350);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Could not finalize profile.');
+      setErrorMessage(err.message || 'Could not save profile.');
       setSubmitting(false);
     }
   };
@@ -182,16 +242,16 @@ export default function OnboardingPage({
           <Link
             href="/dashboard"
             className="text-sm text-muted-foreground hover:text-foreground focus-ring"
-            data-testid="link-onboarding-login"
+            data-testid="link-onboarding-skip"
           >
             Skip to Dashboard
           </Link>
         </div>
       </nav>
 
-      <div className="mx-auto max-w-[760px] px-5 pb-16 pt-9 sm:px-8 sm:pt-16">
+      <div className="mx-auto max-w-[760px] px-5 pb-16 pt-9 sm:px-8 sm:pt-14">
         {/* Progress Tracker */}
-        <div className="mb-14 flex items-center justify-between">
+        <div className="mb-10 flex items-center justify-between">
           <div className="flex flex-1 items-center">
             {steps.map((item, itemIndex) => (
               <div key={item.path} className="flex flex-1 items-center last:flex-none">
@@ -224,7 +284,13 @@ export default function OnboardingPage({
         <main className="page-in rounded-[28px] border border-border bg-card p-6 shadow-[0_24px_70px_hsl(222_29%_17%/.07)] sm:p-10">
           <div className="flex items-center justify-between">
             <p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-primary">
-              {content.eyebrow}
+              {index === 0
+                ? 'Welcome to IterateUP'
+                : index === 1
+                ? 'Step 1 of 3 · Career Goal'
+                : index === 2
+                ? 'Step 2 of 3 · Your College & Background'
+                : 'Step 3 of 3 · Resume & Online Presence'}
             </p>
             {isConfigured && (
               <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
@@ -233,13 +299,6 @@ export default function OnboardingPage({
             )}
           </div>
 
-          <h1 className="mt-5 max-w-[600px] font-display text-4xl font-bold leading-[1.03] tracking-[-.065em] sm:text-5xl">
-            {content.title}
-          </h1>
-          <p className="mt-5 max-w-[540px] text-base leading-7 text-muted-foreground">
-            {content.body}
-          </p>
-
           {errorMessage && (
             <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/10 p-3.5 text-xs text-destructive">
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
@@ -247,153 +306,402 @@ export default function OnboardingPage({
             </div>
           )}
 
-          {step === 'profile' && (
-            <div className="mt-7 space-y-4 rounded-2xl border border-border bg-background p-5">
-              <div>
-                <label className="block text-xs font-semibold text-foreground">
-                  College / University
-                </label>
-                <input
-                  type="text"
-                  value={collegeName}
-                  onChange={(e) => setCollegeName(e.target.value)}
-                  placeholder="e.g. COEP Technological University, Pune"
-                  className="mt-1.5 h-11 w-full rounded-xl border border-input bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-foreground">
-                  Target Engineering Role
-                </label>
-                <input
-                  type="text"
-                  value={targetRole}
-                  onChange={(e) => setTargetRole(e.target.value)}
-                  placeholder="e.g. Software Development Engineer - Backend (SDE-1)"
-                  className="mt-1.5 h-11 w-full rounded-xl border border-input bg-card px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-                />
+          {/* STEP 0: START */}
+          {index === 0 && (
+            <div className="mt-5">
+              <h1 className="font-display text-4xl font-bold leading-[1.03] tracking-[-.065em] sm:text-5xl">
+                Let's calibrate your career operating system.
+              </h1>
+              <p className="mt-4 max-w-[580px] text-base leading-7 text-muted-foreground">
+                IterateUP analyzes where you currently are, pinpoints high-impact skill gaps, recommends what to build and learn, and connects you to target companies.
+              </p>
+
+              <div className="mt-8 space-y-3">
+                {[
+                  {
+                    title: 'Personalized Skill Gap Analysis',
+                    desc: 'Evaluated directly against real industry hiring bars in India & global tech.',
+                  },
+                  {
+                    title: 'Proof-of-Work Project Roadmap',
+                    desc: 'Step-by-step sprint roadmaps to build production-grade microservices.',
+                  },
+                  {
+                    title: 'Targeted Companies & Applications Tracker',
+                    desc: 'Tailored company matching with salary benchmarks in INR.',
+                  },
+                ].map((feature) => (
+                  <div
+                    key={feature.title}
+                    className="flex items-start gap-3 rounded-2xl border border-border bg-background/60 p-4"
+                  >
+                    <div className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                      <Check size={14} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{feature.title}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{feature.desc}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          {step !== 'connect' ? (
-            <div className="mt-7 grid gap-3">
-              {content.options.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setSelected(option)}
-                  className={`group flex items-center justify-between rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md ${
-                    selected === option
-                      ? 'border-primary bg-primary/7 shadow-sm'
-                      : 'border-border bg-background'
-                  }`}
-                  data-testid={`button-option-${option.toLowerCase().replaceAll(' ', '-')}`}
-                >
-                  <span>
-                    <span className="block text-sm font-semibold">{option}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      {selected === option
-                        ? 'Selected for your personalized path.'
-                        : 'Select this baseline.'}
-                    </span>
-                  </span>
-                  <span
-                    className={`grid h-6 w-6 place-items-center rounded-full border ${
-                      selected === option
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border text-transparent group-hover:border-primary/40'
-                    }`}
-                  >
-                    <Check size={13} />
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-7 space-y-4">
-              {/* Hidden file input */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleResumeChange}
-                accept=".pdf,.doc,.docx"
-                className="hidden"
-              />
+          {/* STEP 1: CAREER GOAL */}
+          {index === 1 && (
+            <div className="mt-5">
+              <h1 className="font-display text-3xl font-bold leading-[1.1] tracking-[-.05em] sm:text-4xl">
+                Where do you want to go?
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Tell us your target role and top companies so we can customize your readiness roadmap.
+              </p>
 
-              {/* Resume upload button */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingResume}
-                className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-colors hover:border-primary/40 ${
-                  uploadedFile || profile?.resume_name
-                    ? 'border-emerald-500/50 bg-emerald-500/5'
-                    : selected === 'resume'
-                    ? 'border-primary bg-primary/7'
-                    : 'border-border bg-background'
-                }`}
-                data-testid="button-connect-resume"
-              >
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
-                  {uploadingResume ? (
-                    <Upload size={18} className="animate-bounce" />
-                  ) : uploadedFile || profile?.resume_name ? (
-                    <CheckCircle2 size={18} className="text-emerald-500" />
-                  ) : (
-                    <FileText size={18} />
-                  )}
-                </span>
-                <span className="flex-1">
-                  <span className="block text-sm font-semibold">
-                    {uploadingResume
-                      ? 'Uploading to Supabase Storage…'
-                      : uploadedFile
-                      ? `Uploaded: ${uploadedFile.name} (${uploadedFile.size})`
-                      : profile?.resume_name
-                      ? `Current Resume: ${profile.resume_name}`
-                      : 'Upload Resume PDF'}
-                  </span>
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    {uploadedFile || profile?.resume_name
-                      ? 'Saved to secure private Supabase Storage bucket.'
-                      : 'Upload your latest CV (.pdf format) for automated skill extraction.'}
-                  </span>
-                </span>
-                <span className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground">
-                  {uploadedFile || profile?.resume_name ? 'Replace' : 'Browse File'}
-                </span>
-              </button>
-
-              {/* Profile Links */}
-              <div className="rounded-2xl border border-border bg-background p-4 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                  <Globe size={14} className="text-primary" /> Profile Links (Optional)
-                </div>
+              <div className="mt-7 space-y-6">
                 <div>
-                  <label className="block text-[11px] text-muted-foreground mb-1">LinkedIn Profile</label>
-                  <input
-                    type="url"
-                    value={linkedinUrl}
-                    onChange={(e) => setLinkedinUrl(e.target.value)}
-                    placeholder="https://linkedin.com/in/username"
-                    className="h-10 w-full rounded-xl border border-input bg-card px-3 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-muted-foreground mb-1">GitHub Username</label>
+                  <label className="block text-xs font-semibold text-foreground">
+                    Target Engineering Role
+                  </label>
                   <input
                     type="text"
-                    value={githubUrl}
-                    onChange={(e) => setGithubUrl(e.target.value)}
-                    placeholder="username"
-                    className="h-10 w-full rounded-xl border border-input bg-card px-3 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    value={targetRole}
+                    onChange={(e) => setTargetRole(e.target.value)}
+                    placeholder="e.g. Software Development Engineer - Backend (SDE-1)"
+                    className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {targetRoleSuggestions.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setTargetRole(r)}
+                        className={`rounded-lg border px-2.5 py-1 text-[11px] transition-colors ${
+                          targetRole === r
+                            ? 'border-primary bg-primary/10 font-semibold text-primary'
+                            : 'border-border bg-card text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">
+                    What would feel like a win this year?
+                  </label>
+                  <div className="mt-2 grid gap-2.5">
+                    {[
+                      'Land my first tech internship (₹40k–₹85k/mo stipend)',
+                      'Crack campus placement at a top product company (₹12–24+ LPA)',
+                      'Build 2-3 production-grade portfolio microservices with proof of work',
+                      'Master DSA & system design for high-bar technical interviews',
+                    ].map((milestone) => (
+                      <button
+                        key={milestone}
+                        type="button"
+                        onClick={() => setSelectedMilestone(milestone)}
+                        className={`flex items-center justify-between rounded-xl border p-3.5 text-left text-xs transition-all ${
+                          selectedMilestone === milestone
+                            ? 'border-primary bg-primary/8 font-semibold text-foreground shadow-sm'
+                            : 'border-border bg-background text-muted-foreground hover:border-border/80'
+                        }`}
+                      >
+                        <span>{milestone}</span>
+                        <div
+                          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+                            selectedMilestone === milestone
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border text-transparent'
+                          }`}
+                        >
+                          <Check size={11} />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">
+                    Target Companies (Click to toggle or add custom)
+                  </label>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {companySuggestions.map((comp) => {
+                      const active = targetCompanies.includes(comp);
+                      return (
+                        <button
+                          key={comp}
+                          type="button"
+                          onClick={() =>
+                            active ? handleRemoveCompany(comp) : handleAddCompany(comp)
+                          }
+                          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors ${
+                            active
+                              ? 'border-primary bg-primary text-primary-foreground font-medium'
+                              : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          <span>{comp}</span>
+                          {active && <Check size={12} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      type="text"
+                      value={customCompanyInput}
+                      onChange={(e) => setCustomCompanyInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCompany(customCompanyInput);
+                          setCustomCompanyInput('');
+                        }
+                      }}
+                      placeholder="Add another company (e.g. Flipkart, CRED)"
+                      className="h-9 flex-1 rounded-lg border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleAddCompany(customCompanyInput);
+                        setCustomCompanyInput('');
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:border-primary"
+                    >
+                      <Plus size={13} /> Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: EDUCATION & PROFILE */}
+          {index === 2 && (
+            <div className="mt-5">
+              <h1 className="font-display text-3xl font-bold leading-[1.1] tracking-[-.05em] sm:text-4xl">
+                Tell us about your college & background.
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                We calibrate your readiness score and target opportunities based on your college and major.
+              </p>
+
+              <div className="mt-7 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">
+                    Your Full Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Shubham Alapure"
+                    className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">
+                    College / University
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={collegeName}
+                    onChange={(e) => setCollegeName(e.target.value)}
+                    placeholder="e.g. MIT ADT University Pune / COEP / IIT Bombay"
+                    className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground">
+                      Degree & Branch
+                    </label>
+                    <input
+                      type="text"
+                      value={degree}
+                      onChange={(e) => setDegree(e.target.value)}
+                      placeholder="e.g. B.Tech Computer Engineering"
+                      className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground">
+                      Year of Study
+                    </label>
+                    <select
+                      value={yearOfStudy}
+                      onChange={(e) => setYearOfStudy(e.target.value)}
+                      className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    >
+                      <option>1st Year (Class of 2028)</option>
+                      <option>2nd Year (Class of 2027)</option>
+                      <option>3rd Year (Class of 2026)</option>
+                      <option>Final Year (Class of 2025)</option>
+                      <option>Recent Graduate</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground">
+                      CGPA / Percentage
+                    </label>
+                    <input
+                      type="text"
+                      value={cgpa}
+                      onChange={(e) => setCgpa(e.target.value)}
+                      placeholder="e.g. 8.5 / 10.0"
+                      className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground">
+                      Location / City
+                    </label>
+                    <input
+                      type="text"
+                      value={locationStr}
+                      onChange={(e) => setLocationStr(e.target.value)}
+                      placeholder="e.g. Pune, Maharashtra, India"
+                      className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: RESUME, LINKS & BIO */}
+          {index === 3 && (
+            <div className="mt-5">
+              <h1 className="font-display text-3xl font-bold leading-[1.1] tracking-[-.05em] sm:text-4xl">
+                Upload your resume & profile links.
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Upload your PDF resume to Supabase Storage. We will automatically parse competencies and align your skills.
+              </p>
+
+              <div className="mt-7 space-y-5">
+                {/* Hidden file input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleResumeChange}
+                  accept=".pdf,.doc,.docx"
+                  className="hidden"
+                />
+
+                {/* Upload card */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all hover:border-primary/50 ${
+                    uploadedFile || profile?.resume_name
+                      ? 'border-emerald-500/50 bg-emerald-500/5'
+                      : 'border-dashed border-border bg-background'
+                  }`}
+                >
+                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    {uploadingResume ? (
+                      <Upload size={20} className="animate-bounce" />
+                    ) : uploadedFile || profile?.resume_name ? (
+                      <CheckCircle2 size={22} className="text-emerald-500" />
+                    ) : (
+                      <FileText size={22} />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {uploadingResume
+                        ? 'Uploading to Supabase Storage…'
+                        : uploadedFile
+                        ? `Attached: ${uploadedFile.name} (${uploadedFile.size})`
+                        : profile?.resume_name
+                        ? `Attached: ${profile.resume_name}`
+                        : 'Upload your Resume PDF'}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {uploadedFile || profile?.resume_name
+                        ? 'Saved securely in your private Supabase storage bucket.'
+                        : 'Click to browse (.pdf format supported)'}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground">
+                    {uploadedFile || profile?.resume_name ? 'Replace' : 'Browse'}
+                  </span>
+                </div>
+
+                <div className="space-y-3 rounded-2xl border border-border bg-background p-4">
+                  <p className="text-xs font-semibold text-foreground">Online Links (Optional)</p>
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">
+                      GitHub Username or URL
+                    </label>
+                    <input
+                      type="text"
+                      value={githubUrl}
+                      onChange={(e) => setGithubUrl(e.target.value)}
+                      placeholder="e.g. shubhamalapure"
+                      className="h-10 w-full rounded-xl border border-input bg-card px-3 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">
+                      LinkedIn Profile URL
+                    </label>
+                    <input
+                      type="url"
+                      value={linkedinUrl}
+                      onChange={(e) => setLinkedinUrl(e.target.value)}
+                      placeholder="e.g. https://linkedin.com/in/shubhamalapure"
+                      className="h-10 w-full rounded-xl border border-input bg-card px-3 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">
+                      Portfolio or Personal Website URL
+                    </label>
+                    <input
+                      type="url"
+                      value={portfolioUrl}
+                      onChange={(e) => setPortfolioUrl(e.target.value)}
+                      placeholder="e.g. https://shubhamalapure.dev"
+                      className="h-10 w-full rounded-xl border border-input bg-card px-3 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1.5">
+                    Short Professional Bio / Statement
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Briefly describe your focus, e.g. Aspiring backend engineer passionate about distributed systems."
+                    className="w-full rounded-xl border border-input bg-background p-3 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
                   />
                 </div>
               </div>
             </div>
           )}
 
+          {/* Bottom Actions */}
           <div className="mt-10 flex items-center justify-between border-t border-border pt-6">
             <Link
               href={index === 0 ? '/signup' : steps[index - 1].path}
@@ -405,15 +713,15 @@ export default function OnboardingPage({
             <button
               type="button"
               onClick={handleContinue}
-              disabled={(index !== 3 && !selected && step !== 'profile') || submitting || uploadingResume}
+              disabled={submitting || uploadingResume}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40"
               data-testid="button-onboarding-continue"
             >
               {submitting ? (
-                'Configuring your workspace…'
+                'Saving your profile to Supabase…'
               ) : index === 3 ? (
                 <>
-                  <span>Open IterateUP Workspace</span>
+                  <span>Save Profile & Open Workspace</span>
                   <ArrowRight size={16} />
                 </>
               ) : (
@@ -427,7 +735,7 @@ export default function OnboardingPage({
         </main>
 
         <p className="mt-5 text-center text-xs text-muted-foreground">
-          You can change any answer later from workspace settings. This is a personalized starting point.
+          You can edit and update any of these details anytime from your profile settings.
         </p>
       </div>
     </div>

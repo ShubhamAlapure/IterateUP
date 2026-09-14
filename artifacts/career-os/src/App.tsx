@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -26,6 +26,11 @@ import {
 } from 'wouter';
 
 const queryClient = new QueryClient();
+
+function RoutedErrorBoundary({ children }: { children: ReactNode }) {
+  const [location] = useLocation();
+  return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
+}
 
 function Router() {
   return (
@@ -57,12 +62,31 @@ function Router() {
   );
 }
 
-function RoutedErrorBoundary({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
-  return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
-}
+import { AuthProvider, useAuth } from '@/context/auth-context';
 
-import { AuthProvider } from '@/context/auth-context';
+function OnboardingRedirector({ children }: { children: ReactNode }) {
+  const [location, setLocation] = useLocation();
+  const { user, profile, isLoading } = useAuth();
+
+  useEffect(() => {
+    // If student is signed in, has a profile row, and onboarding_completed is false,
+    // enforce completing onboarding before accessing dashboard and workspaces.
+    if (
+      !isLoading &&
+      user &&
+      profile &&
+      profile.onboarding_completed === false &&
+      !location.startsWith('/onboarding') &&
+      location !== '/login' &&
+      location !== '/signup' &&
+      location !== '/'
+    ) {
+      setLocation('/onboarding');
+    }
+  }, [isLoading, user, profile, location, setLocation]);
+
+  return <>{children}</>;
+}
 
 function App() {
   return (
@@ -70,7 +94,9 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-            <Router />
+            <OnboardingRedirector>
+              <Router />
+            </OnboardingRedirector>
           </WouterRouter>
           <Toaster />
         </AuthProvider>
