@@ -29,6 +29,25 @@ export interface UserProfile {
   synced_projects?: any[];
   synced_skills?: string[];
   github_synced_at?: string;
+  secondary_role?: string;
+  target_graduation?: string;
+  min_target_compensation?: string;
+  preferences?: {
+    primaryTargetRole?: string;
+    secondaryRole?: string;
+    targetGraduation?: string;
+    minTargetCompensation?: string;
+    notifications?: {
+      dailyDigest: boolean;
+      dailyDigestTime: string;
+      jobAlerts: boolean;
+      interviewReminders: boolean;
+    };
+    privacy?: {
+      profileVisibility: string;
+      universityAffiliation: string;
+    };
+  };
 }
 
 interface AuthContextType {
@@ -68,6 +87,25 @@ const defaultDemoProfile: UserProfile = {
   portfolio_url: 'https://aaravsharma.dev',
   readiness_score: 68,
   onboarding_completed: true,
+  secondary_role: 'Full-Stack SDE Intern',
+  target_graduation: 'May / June 2026',
+  min_target_compensation: '₹60,000/mo (Internship) · ₹14 LPA (Full-time)',
+  preferences: {
+    primaryTargetRole: 'Full-Stack Engineer (React & Node/Go)',
+    secondaryRole: 'Full-Stack SDE Intern',
+    targetGraduation: 'May / June 2026',
+    minTargetCompensation: '₹60,000/mo (Internship) · ₹14 LPA (Full-time)',
+    notifications: {
+      dailyDigest: true,
+      dailyDigestTime: '08:30 AM IST',
+      jobAlerts: true,
+      interviewReminders: true,
+    },
+    privacy: {
+      profileVisibility: 'Verified Product Companies & Campus Mentors',
+      universityAffiliation: 'Authorized for Placement Cell & Career Advisor Guidance',
+    },
+  },
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

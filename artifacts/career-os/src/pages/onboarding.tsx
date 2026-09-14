@@ -79,6 +79,18 @@ export default function OnboardingPage({
   const [targetRole, setTargetRole] = useState(
     profile?.target_role || 'Software Development Engineer (SDE-1)'
   );
+  const [secondaryRole, setSecondaryRole] = useState(
+    profile?.secondary_role || 'Full-Stack SDE Intern'
+  );
+  const [targetGraduation, setTargetGraduation] = useState(
+    profile?.target_graduation || 'May / June 2026'
+  );
+  const [minCompensation, setMinCompensation] = useState(
+    profile?.min_target_compensation || '₹60,000/mo (Internship) · ₹14 LPA (Full-time)'
+  );
+  const [dailyDigest, setDailyDigest] = useState(true);
+  const [jobAlerts, setJobAlerts] = useState(true);
+  const [interviewReminders, setInterviewReminders] = useState(true);
   const [targetCompanies, setTargetCompanies] = useState<string[]>(
     profile?.target_companies && profile.target_companies.length > 0
       ? profile.target_companies
@@ -296,6 +308,9 @@ export default function OnboardingPage({
         cgpa: cgpa.trim() || profile?.cgpa,
         location: locationStr.trim() || profile?.location,
         target_role: targetRole || profile?.target_role,
+        secondary_role: secondaryRole || profile?.secondary_role || 'Full-Stack SDE Intern',
+        target_graduation: targetGraduation || profile?.target_graduation || 'May / June 2026',
+        min_target_compensation: minCompensation || profile?.min_target_compensation || '₹60,000/mo (Internship) · ₹14 LPA (Full-time)',
         target_companies: targetCompanies,
         bio: bio.trim(),
         github_username: cleanGh,
@@ -309,6 +324,22 @@ export default function OnboardingPage({
         synced_projects: signals?.projects || [],
         synced_skills: signals?.skills || [],
         github_synced_at: new Date().toISOString(),
+        preferences: {
+          primaryTargetRole: targetRole || profile?.target_role,
+          secondaryRole: secondaryRole || 'Full-Stack SDE Intern',
+          targetGraduation: targetGraduation || 'May / June 2026',
+          minTargetCompensation: minCompensation || '₹60,000/mo (Internship) · ₹14 LPA (Full-time)',
+          notifications: {
+            dailyDigest: dailyDigest,
+            dailyDigestTime: '08:30 AM IST',
+            jobAlerts: jobAlerts,
+            interviewReminders: interviewReminders,
+          },
+          privacy: {
+            profileVisibility: 'Verified Product Companies & Campus Mentors',
+            universityAffiliation: 'Authorized for Placement Cell & Career Advisor Guidance',
+          },
+        },
       });
 
       window.setTimeout(() => {
@@ -473,6 +504,47 @@ export default function OnboardingPage({
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground">
+                      Secondary Target Role (Backup Track)
+                    </label>
+                    <input
+                      type="text"
+                      value={secondaryRole}
+                      onChange={(e) => setSecondaryRole(e.target.value)}
+                      placeholder="e.g. Full-Stack SDE Intern or Backend Systems"
+                      className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground">
+                      Target Graduation Window
+                    </label>
+                    <input
+                      type="text"
+                      value={targetGraduation}
+                      onChange={(e) => setTargetGraduation(e.target.value)}
+                      placeholder="e.g. May / June 2026"
+                      className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-foreground">
+                    Minimum Compensation Target
+                  </label>
+                  <input
+                    type="text"
+                    value={minCompensation}
+                    onChange={(e) => setMinCompensation(e.target.value)}
+                    placeholder="e.g. ₹60,000/mo (Internship) · ₹14 LPA (Full-time)"
+                    className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  />
                 </div>
 
                 <div>
