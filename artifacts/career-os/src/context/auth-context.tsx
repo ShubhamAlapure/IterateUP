@@ -85,7 +85,7 @@ const defaultDemoProfile: UserProfile = {
   github_username: 'aaravsharma-dev',
   linkedin_url: 'https://linkedin.com/in/aaravsharma-dev',
   portfolio_url: 'https://aaravsharma.dev',
-  readiness_score: 68,
+  readiness_score: 86,
   onboarding_completed: true,
   secondary_role: 'Full-Stack SDE Intern',
   target_graduation: 'May / June 2026',
@@ -111,9 +111,23 @@ const defaultDemoProfile: UserProfile = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return null;
+  });
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const storedProfile = localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY);
+      if (storedProfile) return JSON.parse(storedProfile);
+    } catch {}
+    return defaultDemoProfile;
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch student profile from Supabase
@@ -129,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.warn('Note on profiles table:', error.message);
         // Fallback profile if SQL schema has not been executed yet
-        setProfile({
+        const fallback: UserProfile = {
           id: userId,
           email: userEmail || '',
           full_name: userFullName || (userEmail ? userEmail.split('@')[0] : 'Student'),
@@ -138,15 +152,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           year_of_study: '3rd Year',
           cgpa: '8.94 / 10.0',
           location: 'Pune, Maharashtra',
-          target_role: 'Software Development Engineer (SDE-1)',
-          readiness_score: 60,
+          target_role: 'Full-Stack Engineer (React & Node/Go)',
+          readiness_score: 86,
           onboarding_completed: false,
-        });
+        };
+        setProfile(fallback);
+        try {
+          localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(fallback));
+        } catch {}
         return;
       }
 
       if (data) {
-        setProfile(data as UserProfile);
+        const loaded = data as UserProfile;
+        setProfile(loaded);
+        try {
+          localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(loaded));
+        } catch {}
       } else {
         // Fallback row creation if trigger hasn't completed
         const newProfile: Partial<UserProfile> = {
@@ -158,8 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           year_of_study: '3rd Year',
           cgpa: '8.94 / 10.0',
           location: 'Pune, Maharashtra',
-          target_role: 'Software Development Engineer (SDE-1)',
-          readiness_score: 60,
+          target_role: 'Full-Stack Engineer (React & Node/Go)',
+          readiness_score: 86,
           onboarding_completed: false,
         };
         const { data: createdProfile } = await supabase
@@ -386,7 +408,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Update profile
   const updateProfile = async (updates: Partial<UserProfile>) => {
     const updated = { ...profile, ...updates } as UserProfile;
-    setProfile(updated);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(updated));
+    } catch {}
 
     if (isSupabaseConfigured && user) {
       const { error } = await supabase
@@ -401,8 +425,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Failed to update Supabase profile:', error.message);
         return { error };
       }
-    } else {
-      localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(updated));
     }
 
     return { error: null };

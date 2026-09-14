@@ -3,7 +3,7 @@ import {
   EnrichedSignalData,
   getCachedEnrichedSignals,
 } from '@/lib/services/profile-enricher';
-import { computeTailoredReadiness } from '@/lib/services/skills-readiness-engine';
+import { computeTailoredReadiness, IndustryRubricPillar } from '@/lib/services/skills-readiness-engine';
 import {
   buildTailoredCareerSprint,
   loadSavedCompletedTasks,
@@ -58,6 +58,9 @@ export interface DashboardApplicationItem {
 export interface PersonalizedDashboardData {
   readinessScore: number;
   readinessLabel: string;
+  rubricTier: string;
+  percentileRank: string;
+  rubricPillars: IndustryRubricPillar[];
   nextMilestone: string;
   delta: string;
   targetRole: string;
@@ -108,14 +111,11 @@ export function buildPersonalizedDashboard(
   const college = profile?.college || 'MIT ADT University Pune';
   const targetRole = profile?.target_role || 'Full-Stack Engineer (React & Node/Go)';
 
-  // 1. Compute tailored readiness & skill categories
+  // 1. Compute standardized industry readiness (Single source of truth, 100% deterministic)
   const tailoredReadiness = computeTailoredReadiness(profile || null, enrichedSignals, targetRole);
-  const readinessScore = profile?.readiness_score ?? tailoredReadiness.overallScore;
+  const readinessScore = tailoredReadiness.overallScore;
 
-  let readinessLabel = 'On a Strong Upward Track';
-  if (readinessScore >= 85) readinessLabel = 'Elite Candidate Trajectory · SDE-1 Ready';
-  else if (readinessScore >= 75) readinessLabel = 'Strong Competitive Candidate for Product Internships';
-  else readinessLabel = 'Active Proof-of-Work Acceleration Phase';
+  let readinessLabel = tailoredReadiness.tierLabel || 'On a Strong Upward Track';
 
   // 2. Compute personalized projects
   const customProjects = loadSavedCustomProjects(profileId);
@@ -212,6 +212,9 @@ export function buildPersonalizedDashboard(
   return {
     readinessScore,
     readinessLabel,
+    rubricTier: tailoredReadiness.tierLabel,
+    percentileRank: tailoredReadiness.percentileRank,
+    rubricPillars: tailoredReadiness.rubricPillars,
     nextMilestone: `Ship Redis Caching tier & containerized Docker build for ${topProj}`,
     delta: '+9 this month',
     targetRole,

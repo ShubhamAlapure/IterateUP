@@ -26,6 +26,7 @@ import {
   Target,
   TrendingUp,
   UserCheck,
+  ShieldCheck,
   Zap,
 } from 'lucide-react';
 import { Link } from 'wouter';
@@ -40,6 +41,7 @@ import {
   auditCandidateSkillsWithAI,
   EnhancedSkillGapItem,
   StructuredEvidence,
+  IndustryRubricPillar,
 } from '@/lib/services/skills-readiness-engine';
 import {
   getCachedEnrichedSignals,
@@ -47,6 +49,7 @@ import {
   cleanGithubUsername,
   EnrichedSignalData,
 } from '@/lib/services/profile-enricher';
+import { IndustryRubricModal } from '@/components/industry-rubric-modal';
 
 export default function SkillsPage() {
   const { profile, updateProfile } = useAuth();
@@ -56,6 +59,7 @@ export default function SkillsPage() {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [showRubricModal, setShowRubricModal] = useState(false);
   const [isAuditingAI, setIsAuditingAI] = useState(false);
   const [aiAuditResult, setAiAuditResult] = useState<any>(null);
 
@@ -115,6 +119,13 @@ export default function SkillsPage() {
   const readinessResult = useMemo(() => {
     return computeTailoredReadiness(profile, enrichedData, activeBenchmarkRole);
   }, [profile, enrichedData, activeBenchmarkRole]);
+
+  // Auto-sync profile readiness_score with standardized score when targeting primary role
+  useEffect(() => {
+    if (profile?.id && selectedRole === 'primary' && profile.readiness_score !== readinessResult.overallScore) {
+      updateProfile({ readiness_score: readinessResult.overallScore }).catch(() => {});
+    }
+  }, [profile?.id, profile?.readiness_score, selectedRole, readinessResult.overallScore, updateProfile]);
 
   // Generate tailored skill gaps deeply evaluating GitHub and LinkedIn
   const gaps: EnhancedSkillGapItem[] = useMemo(() => {
@@ -222,12 +233,18 @@ export default function SkillsPage() {
                   <UserCheck size={11} /> Target Role Tailored
                 </span>
               </div>
-              <div className="mt-3 flex items-baseline gap-3">
+              <div className="mt-3 flex flex-wrap items-baseline gap-3">
                 <span className="font-display text-5xl font-bold tracking-tight">{readinessResult.overallScore}</span>
                 <span className="font-mono-ui text-lg text-[#9bd8b9]">/ 100</span>
                 <span className="rounded-full bg-[#9bd8b9]/15 px-2.5 py-0.5 font-mono-ui text-xs text-[#b4e4cc]">
                   {readinessResult.delta} this month
                 </span>
+                <button
+                  onClick={() => setShowRubricModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#9bd8b9]/20 hover:bg-[#9bd8b9]/30 text-[#9bd8b9] px-3 py-1 font-mono-ui text-[11px] font-bold border border-[#9bd8b9]/30 transition-all hover:scale-105 ml-1"
+                >
+                  <ShieldCheck size={13} /> Inspect 5-Pillar Industry Rubric
+                </button>
               </div>
               <p className="mt-2 text-sm text-[#d5e1d9]">
                 Target role benchmark:{' '}
@@ -638,6 +655,16 @@ export default function SkillsPage() {
             </div>
           </div>
         )}
+        {/* Industry Rubric Modal */}
+        <IndustryRubricModal
+          isOpen={showRubricModal}
+          onClose={() => setShowRubricModal(false)}
+          readinessScore={readinessResult.overallScore}
+          readinessLabel={readinessResult.tierLabel}
+          targetRole={activeBenchmarkRole}
+          percentileRank={readinessResult.percentileRank}
+          pillars={readinessResult.rubricPillars || []}
+        />
       </div>
     </ProductShell>
   );

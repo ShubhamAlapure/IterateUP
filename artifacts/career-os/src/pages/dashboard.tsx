@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Check,
   ChevronRight,
@@ -25,20 +25,27 @@ import {
   PersonalizedDashboardData,
 } from '@/lib/services/dashboard-engine';
 import { getCachedEnrichedSignals } from '@/lib/services/profile-enricher';
+import { IndustryRubricModal } from '@/components/industry-rubric-modal';
 
-function ReadinessCard({ data }: { data: PersonalizedDashboardData }) {
+function ReadinessCard({
+  data,
+  onOpenRubric,
+}: {
+  data: PersonalizedDashboardData;
+  onOpenRubric: () => void;
+}) {
   return (
     <section className="relative overflow-hidden rounded-2xl bg-[#1f3335] p-6 text-[#f7f3e9] shadow-[0_14px_34px_hsl(222_29%_17%/.12)] sm:p-7">
       <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full border-[28px] border-[#9bd8b9]/8" />
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-[#a9dfc4]">
                 Career readiness
               </p>
               <span className="rounded-full bg-[#9bd8b9]/15 px-2 py-0.5 font-mono-ui text-[9px] text-[#9bd8b9]">
-                Live Engine
+                Industry Standard · SDE-1 Bar
               </span>
             </div>
             <div className="mt-2 flex items-end gap-2">
@@ -48,32 +55,73 @@ function ReadinessCard({ data }: { data: PersonalizedDashboardData }) {
               <span className="mb-1 font-mono-ui text-sm text-[#9bd8b9]">/100</span>
             </div>
           </div>
-          <span className="rounded-full bg-[#9bd8b9]/12 px-2.5 py-1 font-mono-ui text-[10px] text-[#b4e4cc]">
-            {data.delta}
-          </span>
+          <div className="flex flex-col items-end gap-2">
+            <span className="rounded-full bg-[#9bd8b9]/12 px-2.5 py-1 font-mono-ui text-[10px] text-[#b4e4cc]">
+              {data.delta}
+            </span>
+            <button
+              onClick={onOpenRubric}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#9bd8b9]/20 px-3 py-1 text-[11px] font-bold text-[#9bd8b9] transition-all hover:bg-[#9bd8b9]/30 hover:scale-105 border border-[#9bd8b9]/30 shadow-sm"
+              title="Inspect 5-pillar industry rubric and point breakdown"
+            >
+              <ShieldCheck size={13} /> Inspect Rubric
+            </button>
+          </div>
         </div>
 
-        <div className="mt-6 h-2.5 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-white/10">
           <div
-            className="h-full rounded-full bg-[#9bd8b9] transition-all duration-500"
+            className="h-full rounded-full bg-gradient-to-r from-[#59c996] to-[#9bd8b9] transition-all duration-500"
             style={{ width: `${data.readinessScore}%` }}
           />
         </div>
 
-        <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+        <div className="mt-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
           <span className="text-[#c5d2cc] font-medium">{data.readinessLabel}</span>
           <span className="text-[#9bd8b9] truncate max-w-sm">Next: {data.nextMilestone}</span>
         </div>
 
-        <div className="mt-7 flex items-center gap-3 border-t border-white/10 pt-5">
-          <TrendingUp size={17} className="text-[#df9a78] shrink-0" />
-          <p className="text-xs leading-5 text-[#d5e1d9]">
-            Targeting{' '}
-            <strong className="font-semibold text-[#f7f3e9]">
-              {data.targetRole}
-            </strong>
-            . Concrete code evidence verified in <strong className="font-semibold text-[#9bd8b9]">@{data.githubUsername}</strong>.
-          </p>
+        {/* 5-Pillar Standard Quick Badges */}
+        {data.rubricPillars && data.rubricPillars.length > 0 && (
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-5 gap-2 pt-4 border-t border-white/10">
+            {data.rubricPillars.map((p) => (
+              <button
+                key={p.id}
+                onClick={onOpenRubric}
+                className="rounded-xl bg-white/[0.04] p-2 text-left transition-all hover:bg-white/[0.08] hover:border-[#9bd8b9]/40 border border-white/5 group"
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-mono-ui text-[9px] text-[#a9dfc4] truncate group-hover:text-white">
+                    {p.name.split('&')[0].trim()}
+                  </span>
+                  <span className="font-mono-ui text-[9px] font-bold text-[#9bd8b9]">
+                    {p.score}/{p.maxScore}
+                  </span>
+                </div>
+                <div className="mt-1 h-1 w-full rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-[#9bd8b9]"
+                    style={{ width: `${(p.score / p.maxScore) * 100}%` }}
+                  />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
+          <div className="flex items-center gap-2.5">
+            <TrendingUp size={16} className="text-[#df9a78] shrink-0" />
+            <p className="text-xs leading-5 text-[#d5e1d9]">
+              Targeting <strong className="font-semibold text-[#f7f3e9]">{data.targetRole}</strong>. Code evidence verified in <strong className="font-semibold text-[#9bd8b9]">@{data.githubUsername}</strong>.
+            </p>
+          </div>
+          <button
+            onClick={onOpenRubric}
+            className="text-[11px] font-mono-ui text-[#9bd8b9] hover:underline shrink-0 hidden sm:block"
+          >
+            How rating is calculated →
+          </button>
         </div>
       </div>
     </section>
@@ -576,8 +624,9 @@ function Activity({ applications }: { applications: PersonalizedDashboardData['a
 }
 
 export default function Dashboard() {
-  const { profile, user } = useAuth();
+  const { profile, user, updateProfile } = useAuth();
   const username = profile?.github_username || 'ShubhamAlapure';
+  const [showRubricModal, setShowRubricModal] = useState(false);
 
   // Retrieve cached or live enriched signals
   const enrichedSignals = useMemo(() => {
@@ -588,6 +637,13 @@ export default function Dashboard() {
   const dashboardData = useMemo(() => {
     return buildPersonalizedDashboard(profile, enrichedSignals);
   }, [profile, enrichedSignals]);
+
+  // Ensure user's profile row in database stays strictly aligned with the standardized score
+  useEffect(() => {
+    if (profile?.id && profile.readiness_score !== dashboardData.readinessScore) {
+      updateProfile({ readiness_score: dashboardData.readinessScore }).catch(() => {});
+    }
+  }, [profile?.id, profile?.readiness_score, dashboardData.readinessScore, updateProfile]);
 
   const firstName = profile?.full_name
     ? profile.full_name.split(' ')[0]
@@ -613,16 +669,20 @@ export default function Dashboard() {
             <span>Target: {dashboardData.targetRole}</span>
           </div>
           <button
+            onClick={() => setShowRubricModal(true)}
             className="hidden items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold transition-colors hover:border-primary sm:flex"
           >
-            <Clock3 size={14} className="text-primary" /> Weekly view
+            <ShieldCheck size={14} className="text-primary" /> Industry Rubric
           </button>
         </div>
       </TopBar>
 
       <div className="page-in mx-auto max-w-[1420px] space-y-5 px-5 py-6 sm:px-8 lg:px-11 lg:py-8">
         <div className="grid gap-5 lg:grid-cols-[1.08fr_.92fr]">
-          <ReadinessCard data={dashboardData} />
+          <ReadinessCard
+            data={dashboardData}
+            onOpenRubric={() => setShowRubricModal(true)}
+          />
           <ActionList actions={dashboardData.todayActions} profileId={profileId} />
         </div>
 
@@ -642,6 +702,16 @@ export default function Dashboard() {
           <Flame size={14} className="text-accent" /> Keep showing up. Momentum is a skill.
         </div>
       </div>
+
+      <IndustryRubricModal
+        isOpen={showRubricModal}
+        onClose={() => setShowRubricModal(false)}
+        readinessScore={dashboardData.readinessScore}
+        readinessLabel={dashboardData.readinessLabel}
+        targetRole={dashboardData.targetRole}
+        percentileRank={dashboardData.percentileRank}
+        pillars={dashboardData.rubricPillars || []}
+      />
     </ProductShell>
   );
 }

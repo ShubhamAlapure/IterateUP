@@ -157,24 +157,22 @@ export default function SettingsPage() {
         linkedinUrl !== profile?.linkedin_url;
 
       let signals = null;
-      let newScore = profile?.readiness_score || 72;
-
-      // If handles or role changed, refresh signal enricher in real time
       if (isRoleOrGhChanged && cleanGh) {
         signals = await fetchAndEnrichStudentProfile(cleanGh, linkedinUrl.trim(), primaryTargetRole);
-        const interimProfile = {
-          ...profile,
-          target_role: primaryTargetRole,
-          college,
-          degree,
-          year_of_study: yearOfStudy,
-          cgpa,
-          github_username: cleanGh,
-          linkedin_url: linkedinUrl,
-        };
-        const tailored = computeTailoredReadiness(interimProfile as any, signals, primaryTargetRole);
-        newScore = tailored.overallScore;
       }
+
+      const interimProfile = {
+        ...profile,
+        target_role: primaryTargetRole.trim(),
+        college: college.trim(),
+        degree: degree.trim(),
+        year_of_study: yearOfStudy.trim(),
+        cgpa: cgpa.trim(),
+        github_username: cleanGh,
+        linkedin_url: linkedinUrl.trim(),
+      };
+      const tailored = computeTailoredReadiness(interimProfile as any, signals, primaryTargetRole);
+      const newScore = tailored.overallScore;
 
       await updateProfile({
         target_role: primaryTargetRole.trim(),
