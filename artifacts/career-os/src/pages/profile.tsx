@@ -1218,7 +1218,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Free Gemini API Key configuration */}
+            {/* Groq LPU AI Engine configuration */}
             <div className="mt-5 border-t border-border pt-4">
               <div className="flex items-center justify-between">
                 <button
@@ -1227,32 +1227,25 @@ export default function ProfilePage() {
                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
                 >
                   <Cpu size={13} className="text-primary" />
-                  <span>Configure Free Google Gemini 2.0 API Key</span>
+                  <span>AI Engine: Groq LPU (Fast GPT-OSS-120B &amp; Llama 3)</span>
                   <ChevronRight size={13} className={showKeyConfig ? 'rotate-90 transition-transform' : ''} />
                 </button>
-                <span className="text-[10px] text-muted-foreground font-mono-ui">100% Free Tier</span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono-ui font-semibold">
+                  ✓ Groq Live Connected
+                </span>
               </div>
 
               {showKeyConfig && (
-                <div className="mt-3 rounded-xl border border-border bg-background p-3 text-xs">
+                <div className="mt-3 rounded-xl border border-border bg-background p-3.5 text-xs">
                   <p className="text-muted-foreground leading-relaxed">
-                    Get a free API key with zero billing from{' '}
-                    <a
-                      href="https://aistudio.google.com/app/apikey"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-primary underline"
-                    >
-                      Google AI Studio
-                    </a>{' '}
-                    (1,500 free requests/day) to run live generative code scans on your repos.
+                    Powered by high-speed Groq LPUs with sub-100ms code analysis. Backup Gemini configuration enabled.
                   </p>
                   <div className="mt-2.5 flex gap-2">
                     <input
                       type="password"
                       value={geminiKeyInput}
                       onChange={(e) => setGeminiKeyInput(e.target.value)}
-                      placeholder="Paste AI Studio API key (AIzaSy...)"
+                      placeholder="Groq Key (gsk_...) or Gemini Key"
                       className="h-9 flex-1 rounded-xl border border-input bg-card px-3 text-xs outline-none focus:border-primary"
                     />
                     <button
@@ -1260,7 +1253,7 @@ export default function ProfilePage() {
                       onClick={() => handleSaveGeminiKey(geminiKeyInput)}
                       className="rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:opacity-90"
                     >
-                      Save &amp; Re-evaluate
+                      Update &amp; Re-evaluate
                     </button>
                   </div>
                 </div>
