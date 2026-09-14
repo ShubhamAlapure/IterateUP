@@ -33,6 +33,7 @@ import {
   cleanGithubUsername,
   type EnrichedSignalData,
 } from '@/lib/services/profile-enricher';
+import { computeTailoredReadiness } from '@/lib/services/skills-readiness-engine';
 
 const steps = [
   { path: '/onboarding', label: 'Start' },
@@ -269,6 +270,24 @@ export default function OnboardingPage({
         signals = await fetchAndEnrichStudentProfile(cleanGh, linkedinUrl.trim(), targetRole);
       }
 
+      const interimProfile = {
+        full_name: fullName.trim() || profile?.full_name,
+        college: collegeName.trim() || profile?.college,
+        degree: degree.trim() || profile?.degree,
+        year_of_study: yearOfStudy || profile?.year_of_study,
+        cgpa: cgpa.trim() || profile?.cgpa,
+        target_role: targetRole || profile?.target_role,
+        github_username: cleanGh,
+        linkedin_url: linkedinUrl.trim(),
+        portfolio_url: portfolioUrl.trim(),
+        resume_name: uploadedFile?.name || profile?.resume_name,
+        synced_projects: signals?.projects || [],
+        synced_skills: signals?.skills || [],
+        projects_count: signals?.projectsCount || 3,
+        experience_count: signals?.experienceCount || 2,
+      };
+      const tailored = computeTailoredReadiness(interimProfile as any, signals, targetRole);
+
       await updateProfile({
         full_name: fullName.trim() || profile?.full_name,
         college: collegeName.trim() || profile?.college,
@@ -283,7 +302,7 @@ export default function OnboardingPage({
         linkedin_url: linkedinUrl.trim(),
         portfolio_url: portfolioUrl.trim(),
         onboarding_completed: true,
-        readiness_score: 72,
+        readiness_score: tailored.overallScore,
         skills_count: signals?.skillsFoundCount || 14,
         experience_count: signals?.experienceCount || 2,
         projects_count: signals?.projectsCount || 3,

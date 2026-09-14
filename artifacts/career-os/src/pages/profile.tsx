@@ -40,6 +40,7 @@ import {
   cleanGithubUsername,
   type EnrichedSignalData,
 } from '@/lib/services/profile-enricher';
+import { computeTailoredReadiness } from '@/lib/services/skills-readiness-engine';
 import {
   evaluateRepoHeuristics,
   evaluateRepositoryWithAI,
@@ -181,8 +182,11 @@ export default function ProfilePage() {
       setSyncFeedback(`Synced ${data.publicReposCount} repositories & ${data.skillsFoundCount} skills from @${data.githubUsername}!`);
       setTimeout(() => setSyncFeedback(null), 4000);
 
-      // Persist enriched signal metrics to Supabase
+      const tailored = computeTailoredReadiness(profile, data, targetRole);
+
+      // Persist enriched signal metrics & tailored readiness to Supabase
       await updateProfile({
+        readiness_score: tailored.overallScore,
         skills_count: data.skillsFoundCount,
         experience_count: data.experienceCount,
         projects_count: data.projectsCount,
