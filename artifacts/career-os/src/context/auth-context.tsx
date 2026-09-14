@@ -23,6 +23,12 @@ export interface UserProfile {
   portfolio_url?: string;
   readiness_score?: number;
   onboarding_completed?: boolean;
+  skills_count?: number;
+  experience_count?: number;
+  projects_count?: number;
+  synced_projects?: any[];
+  synced_skills?: string[];
+  github_synced_at?: string;
 }
 
 interface AuthContextType {

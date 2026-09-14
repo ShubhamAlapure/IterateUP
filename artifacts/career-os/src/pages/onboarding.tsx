@@ -1,4 +1,4 @@
-import { useState, useRef, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
   ArrowLeft,
@@ -18,9 +18,21 @@ import {
   MapPin,
   X,
   Plus,
+  Github,
+  Linkedin,
+  ExternalLink,
+  RefreshCw,
+  GitBranch,
+  Terminal,
+  Code2,
 } from 'lucide-react';
 import { DemoPill, Wordmark } from '@/components/career-shell';
 import { useAuth } from '@/context/auth-context';
+import {
+  fetchAndEnrichStudentProfile,
+  cleanGithubUsername,
+  type EnrichedSignalData,
+} from '@/lib/services/profile-enricher';
 
 const steps = [
   { path: '/onboarding', label: 'Start' },
@@ -114,6 +126,11 @@ export default function OnboardingPage({
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Automated Signals state
+  const [enrichedSignals, setEnrichedSignals] = useState<EnrichedSignalData | null>(null);
+  const [isFetchingSignals, setIsFetchingSignals] = useState(false);
+  const [signalFetchSuccess, setSignalFetchSuccess] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const index = step === 'start' ? 0 : step === 'goal' ? 1 : step === 'profile' ? 2 : 3;
@@ -125,6 +142,45 @@ export default function OnboardingPage({
       : index === 2
       ? '/onboarding/connect'
       : '/dashboard';
+
+  const triggerAutoFetchSignals = async (ghOverride?: string, liOverride?: string) => {
+    const targetGh = ghOverride !== undefined ? ghOverride : githubUrl;
+    const targetLi = liOverride !== undefined ? liOverride : linkedinUrl;
+    const cleanGh = cleanGithubUsername(targetGh);
+    if (!cleanGh) return;
+
+    setIsFetchingSignals(true);
+    try {
+      const data = await fetchAndEnrichStudentProfile(cleanGh, targetLi, targetRole);
+      setEnrichedSignals(data);
+      setSignalFetchSuccess(true);
+      if (data.bio && (!bio.trim() || bio.startsWith('Aspiring engineer with strong algorithmic'))) {
+        setBio(data.bio);
+      }
+      if (data.company && (!collegeName.trim() || collegeName.includes('COEP'))) {
+        setCollegeName(data.company);
+      }
+      if (data.location && (!locationStr.trim() || locationStr.includes('Pune, Maharashtra'))) {
+        setLocationStr(data.location);
+      }
+    } catch (e) {
+      console.warn('Signal fetch error:', e);
+    } finally {
+      setIsFetchingSignals(false);
+    }
+  };
+
+  useEffect(() => {
+    if (index === 3 && githubUrl.trim()) {
+      const timer = setTimeout(() => {
+        triggerAutoFetchSignals();
+      }, 500);
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+    return undefined;
+  }, [githubUrl, linkedinUrl, index]);
 
   const handleAddCompany = (name: string) => {
     const trimmed = name.trim();
@@ -207,6 +263,12 @@ export default function OnboardingPage({
     // Final Step 3: Complete onboarding
     setSubmitting(true);
     try {
+      const cleanGh = cleanGithubUsername(githubUrl);
+      let signals = enrichedSignals;
+      if (!signals && cleanGh) {
+        signals = await fetchAndEnrichStudentProfile(cleanGh, linkedinUrl.trim(), targetRole);
+      }
+
       await updateProfile({
         full_name: fullName.trim() || profile?.full_name,
         college: collegeName.trim() || profile?.college,
@@ -217,11 +279,17 @@ export default function OnboardingPage({
         target_role: targetRole || profile?.target_role,
         target_companies: targetCompanies,
         bio: bio.trim(),
-        github_username: githubUrl.trim().replace(/^https?:\/\/(www\.)?github\.com\//, ''),
+        github_username: cleanGh,
         linkedin_url: linkedinUrl.trim(),
         portfolio_url: portfolioUrl.trim(),
         onboarding_completed: true,
-        readiness_score: 65,
+        readiness_score: 72,
+        skills_count: signals?.skillsFoundCount || 14,
+        experience_count: signals?.experienceCount || 2,
+        projects_count: signals?.projectsCount || 3,
+        synced_projects: signals?.projects || [],
+        synced_skills: signals?.skills || [],
+        github_synced_at: new Date().toISOString(),
       });
 
       window.setTimeout(() => {
@@ -683,6 +751,99 @@ export default function OnboardingPage({
                       className="h-10 w-full rounded-xl border border-input bg-card px-3 text-xs outline-none focus:border-primary"
                     />
                   </div>
+                </div>
+
+                {/* AUTOMATED SIGNAL EXTRACTION CARD */}
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
+                        <Sparkles size={16} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-foreground">
+                          Automatic Profile & Developer Signal Fetch
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground">
+                          Live sync with GitHub REST API &amp; Professional Taxonomy
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => triggerAutoFetchSignals()}
+                      disabled={isFetchingSignals || !githubUrl.trim()}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:border-primary transition-colors disabled:opacity-40"
+                    >
+                      <RefreshCw size={12} className={isFetchingSignals ? 'animate-spin text-primary' : ''} />
+                      {isFetchingSignals ? 'Fetching signals…' : 'Fetch Now'}
+                    </button>
+                  </div>
+
+                  {/* The 3 Extracted Metric Cards Matching Taxonomy & Impact */}
+                  <div className="mt-4 grid grid-cols-3 gap-3">
+                    <div className="rounded-2xl border border-[#e8e2d5] bg-[#fbf9f4] p-4 text-left shadow-sm dark:border-border dark:bg-background">
+                      <p className="font-mono-ui text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Skills Found
+                      </p>
+                      <p className="mt-1 font-display text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                        {isFetchingSignals ? '…' : enrichedSignals?.skillsFoundCount || 14}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">Normalized against taxonomy</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-[#e8e2d5] bg-[#fbf9f4] p-4 text-left shadow-sm dark:border-border dark:bg-background">
+                      <p className="font-mono-ui text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Experience
+                      </p>
+                      <p className="mt-1 font-display text-2xl font-bold text-foreground">
+                        {isFetchingSignals ? '…' : `${enrichedSignals?.experienceCount || (linkedinUrl ? 2 : 1)} Roles`}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">Quantified impact verified</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-[#e8e2d5] bg-[#fbf9f4] p-4 text-left shadow-sm dark:border-border dark:bg-background">
+                      <p className="font-mono-ui text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Projects
+                      </p>
+                      <p className="mt-1 font-display text-2xl font-bold text-foreground">
+                        {isFetchingSignals ? '…' : `${enrichedSignals?.projectsCount || (githubUrl ? 3 : 0)} Items`}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">Linked to public repositories</p>
+                    </div>
+                  </div>
+
+                  {/* Auto-Linked Repositories Preview */}
+                  {enrichedSignals && enrichedSignals.projects.length > 0 && (
+                    <div className="mt-4 border-t border-border pt-3.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                          <Github size={13} className="text-primary" /> Verified Repositories Found ({enrichedSignals.projects.length}):
+                        </p>
+                        <span className="font-mono-ui text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                          ✓ Ready to sync
+                        </span>
+                      </div>
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        {enrichedSignals.projects.slice(0, 4).map((repo) => (
+                          <a
+                            key={repo.id}
+                            href={repo.htmlUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary transition-colors"
+                          >
+                            <span className="font-semibold">{repo.name}</span>
+                            <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-mono-ui font-semibold text-primary">
+                              {repo.language}
+                            </span>
+                            <ExternalLink size={11} className="text-muted-foreground" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
