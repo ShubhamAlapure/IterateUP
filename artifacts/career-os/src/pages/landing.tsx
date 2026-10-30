@@ -1,6 +1,7 @@
 import { Link } from 'wouter';
-import { ArrowRight, Check, ChevronRight, CircleCheck, Compass, LineChart, Sparkles, Target, Zap } from 'lucide-react';
+import { ArrowRight, Check, ChevronRight, CircleCheck, Compass, FileDown, LineChart, Sparkles, Target, Zap } from 'lucide-react';
 import { DemoPill, Wordmark } from '@/components/career-shell';
+import { DownloadsSection } from '@/components/downloads-section';
 
 export default function Landing() {
   return (
@@ -10,10 +11,20 @@ export default function Landing() {
         <div className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           <a href="#method" className="transition-colors hover:text-foreground" data-testid="link-method">How it works</a>
           <a href="#signal" className="transition-colors hover:text-foreground" data-testid="link-signal">The signal</a>
+          <a href="#downloads" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground font-medium" data-testid="link-downloads">
+            <span>Downloads</span>
+            <span className="rounded-full bg-primary/15 px-2 py-0.5 font-mono-ui text-[10px] font-bold text-primary">5</span>
+          </a>
           <Link href="/login" className="font-semibold text-foreground focus-ring" data-testid="link-login-nav">Log in</Link>
           <Link href="/signup" className="rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 focus-ring" data-testid="link-signup-nav">Start with IterateUP</Link>
         </div>
-        <Link href="/login" className="text-sm font-semibold text-primary md:hidden" data-testid="link-login-mobile">Log in</Link>
+        <div className="flex items-center gap-3 md:hidden">
+          <a href="#downloads" className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground hover:border-primary/40 focus-ring">
+            <FileDown size={13} className="text-primary" />
+            <span>Files</span>
+          </a>
+          <Link href="/login" className="text-sm font-semibold text-primary" data-testid="link-login-mobile">Log in</Link>
+        </div>
       </nav>
 
       <main>
@@ -25,8 +36,18 @@ export default function Landing() {
             <div className="mt-9 flex flex-wrap items-center gap-4">
               <Link href="/signup" className="group inline-flex items-center gap-3 rounded-xl bg-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-[0_8px_24px_hsl(162_57%_33%/.18)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_28px_hsl(162_57%_33%/.25)] focus-ring" data-testid="link-start-free">Start with your goal <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></Link>
               <Link href="/dashboard" className="text-sm font-semibold text-foreground underline decoration-border underline-offset-4 hover:decoration-primary focus-ring" data-testid="link-see-demo">Explore the demo</Link>
+              <a href="#downloads" className="group inline-flex items-center gap-2 rounded-xl border border-border bg-card/80 px-4 py-3 text-sm font-semibold text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card focus-ring">
+                <FileDown size={16} className="text-primary transition-transform group-hover:translate-y-0.5" />
+                <span>Sample files (5)</span>
+              </a>
             </div>
-            <div className="mt-8 flex items-center gap-5 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Check size={14} className="text-primary" /> Built for students</span><span className="inline-flex items-center gap-1.5"><Check size={14} className="text-primary" /> Your data stays yours</span></div>
+            <div className="mt-8 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5"><Check size={14} className="text-primary" /> Built for students</span>
+              <span className="inline-flex items-center gap-1.5"><Check size={14} className="text-primary" /> Your data stays yours</span>
+              <a href="#downloads" className="inline-flex items-center gap-1.5 font-medium text-foreground hover:text-primary transition-colors">
+                <Check size={14} className="text-primary" /> 5 pre-stored ML downloads
+              </a>
+            </div>
           </div>
           <div className="relative rise-in delay-2">
             <div className="absolute -right-12 -top-12 h-52 w-52 rounded-full bg-[#96d8b9]/20 blur-3xl" />
@@ -60,9 +81,21 @@ export default function Landing() {
             <div className="grid grid-cols-2 gap-3 sm:gap-4"><div className="col-span-2 rounded-2xl border border-border bg-card p-5 soft-shadow sm:p-6"><div className="flex items-start justify-between"><div><p className="text-xs text-muted-foreground">Signal map</p><p className="mt-1 font-display text-xl font-bold tracking-[-.04em]">What makes you stand out</p></div><Sparkles size={19} className="text-accent" /></div><div className="mt-6 flex items-end gap-2">{[42,58,49,72,66,82,78,92,86,100].map((height, index) => <div key={index} className={`flex-1 rounded-t-sm ${index > 6 ? 'bg-primary' : 'bg-primary/20'}`} style={{ height: `${height}px` }} />)}</div><div className="mt-3 flex justify-between font-mono-ui text-[9px] uppercase tracking-[.12em] text-muted-foreground"><span>today</span><span>your edge</span></div></div><div className="rounded-2xl border border-border bg-card p-5 soft-shadow"><p className="text-xs text-muted-foreground">Skill gaps</p><p className="mt-3 font-display text-3xl font-bold tracking-[-.06em]">02</p><p className="mt-2 text-xs leading-5 text-muted-foreground">to close for your next role</p></div><div className="rounded-2xl border border-border bg-card p-5 soft-shadow"><p className="text-xs text-muted-foreground">Best next move</p><p className="mt-3 font-display text-lg font-bold leading-tight tracking-[-.04em]">Ship &amp; share</p><p className="mt-2 text-xs leading-5 text-muted-foreground">proof that feels like you</p></div></div>
           </div>
         </section>
-        <section className="bg-[#1f3335] px-5 py-20 text-[#f7f3e9] sm:px-8"><div className="mx-auto flex max-w-[900px] flex-col items-start justify-between gap-8 md:flex-row md:items-center"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-[#9bd8b9]">Your next chapter starts small</p><h2 className="mt-4 max-w-[600px] font-display text-4xl font-bold leading-tight tracking-[-.065em] sm:text-5xl">Bring the goal.<br />We’ll find the next move.</h2></div><Link href="/signup" className="group inline-flex shrink-0 items-center gap-3 rounded-xl bg-[#9bd8b9] px-5 py-3.5 text-sm font-bold text-[#1f3335] transition-transform hover:-translate-y-0.5 focus-ring" data-testid="link-create-account">Create your free workspace <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" /></Link></div></section>
+
+        {/* Pre-stored Sample Downloads Section */}
+        <DownloadsSection />
+
+        <section className="bg-[#1f3335] px-5 py-20 text-[#f7f3e9] sm:px-8"><div className="mx-auto flex max-w-[900px] flex-col items-start justify-between gap-8 md:flex-row md:items-center"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.18em] text-[#9bd8b9]">Your next chapter starts small</p><h2 className="mt-4 max-w-[600px] font-display text-4xl font-bold leading-tight tracking-[-.065em] sm:text-5xl">Bring the goal.<br />We’ll find the next move.</h2></div><Link href="/signup" className="group inline-flex shrink-0 items-center gap-3 rounded-xl bg-[#9bd8b9] px-5 py-3.5 text-sm font-bold text-[#1f3335] transition-transform hover:-translate-y-0.5 focus-ring" data-testid="link-create-account">Create your free workspace <ArrowRight size={16} /></Link></div></section>
       </main>
-      <footer className="mx-auto flex max-w-[1240px] flex-col gap-4 px-5 py-7 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10"><Wordmark /><span>© 2025 IterateUP · Career Intelligence Platform</span></footer>
+      <footer className="mx-auto flex max-w-[1240px] flex-col gap-4 px-5 py-7 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
+        <Wordmark />
+        <div className="flex items-center gap-6">
+          <a href="#downloads" className="transition-colors hover:text-foreground">Sample Downloads</a>
+          <a href="#method" className="transition-colors hover:text-foreground">How it works</a>
+          <a href="#signal" className="transition-colors hover:text-foreground">The signal</a>
+        </div>
+        <span>© 2025 IterateUP · Career Intelligence Platform</span>
+      </footer>
     </div>
   );
 }

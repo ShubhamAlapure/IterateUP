@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "sync:sample": "node -e \"const fs=require('fs'),path=require('path');const src=path.resolve('../../sample'),dest=path.resolve('public/sample');if(fs.existsSync(src)){fs.mkdirSync(dest,{recursive:true});for(const f of fs.readdirSync(src)){if(!f.startsWith('.')){fs.copyFileSync(path.join(src,f),path.join(dest,f));}}}\"",
+    "predev": "pnpm run sync:sample",
+    "prebuild": "pnpm run sync:sample",
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
